@@ -1,0 +1,43 @@
+{% block basic %}
+{% endblock %}
+
+{% block logging %}
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'mail_admins': {
+           'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler'
+        },
+        'stream' : {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler'
+        },
+        'file' : {
+            'level' : 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': LOG_FILENAME and LOG_FILENAME or '/dev/null'
+        }
+    },
+    'loggers': {
+        '': {
+            'handlers': DEBUG and ['stream'] or ['mail_admins', 'file'],
+            'level': DEBUG and 'DEBUG' or 'WARNING',
+            'propagate': True,
+        },
+    }
+}
+{% endblock %}
+
+{% block static %}
+# URL That doesn't change.
+PERM_STATIC_URL = STATIC_URL
+
+version_file = os.path.join(BASE_DIR, 'VERSION')
+if os.path.isfile(version_file):
+    data = open(version_file, 'r').read().strip()
+    if data:
+        STATIC_URL = STATIC_URL + 'c-%s/' % data
+        CACHE_MIDDLEWARE_KEY_PREFIX = data
+{% endblock %}

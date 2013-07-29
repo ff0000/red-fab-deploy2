@@ -1,0 +1,12 @@
+import os
+{% block settings %}
+pythonpath = "{{ code_path }}/project/"
+bind = "{{ gunicorn.listen_address }}"
+
+# Make sure to tune
+workers = {{ gunicorn.num_workers }}
+
+loglevel = "WARNING"
+logfile = "{{ gunicorn.log_file }}"
+django_settings = "settings"
+{% endblock %}

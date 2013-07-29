@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
+<service_bundle type="manifest" name="{{ celeryd.name }}">
+  <service name="celeryd" type="service" version="1">
+    <dependency name="network" grouping="require_all" restart_on="error" type="service">
+      <service_fmri value="svc:/milestone/network:default" />
+    </dependency>
+    <dependency name="filesystem" grouping="require_all" restart_on="error" type="service">
+      <service_fmri value="svc:/system/filesystem/local" />
+    </dependency>
+    <method_context>
+      <method_credential user="{{ celeryd.user }}" group="{{ celeryd.group }}" />
+      <method_environment>
+        <envvar name="DJANGO_SETTINGS_MODULE" value="settings" />
+      </method_environment>
+    </method_context>
+    <instance name='celeryd' enabled='false'>
+        <exec_method type="method" name="start" exec="{{ celeryd.start_script }} start" timeout_seconds="60" />
+        <exec_method type="method" name="stop" exec="{{ celeryd.start_script }} stop" timeout_seconds="60" />
+        <exec_method type="method" name="restart" exec="{{ celeryd.start_script }} restart" timeout_seconds="60" />
+        <property_group name="startd" type="framework">
+            <propval name="duration" type="astring" value="contract" />
+            <propval name="ignore_error" type="astring" value="core,signal" />
+        </property_group>
+        <property_group name="celeryd" type="application">
+          <propval name="python" type="astring" value="{{ python.location }}bin/python" />
+          <propval name="command_prefix" type="astring" value="{{ code_path }}/project/manage.py" />
+          <propval name="pid_file" type="astring" value="{{ celeryd.pid_dir }}/celeryd-{{ celeryd.name }}.pid" />
+          <propval name="log_file" type="astring" value="{{ celeryd.log_dir }}/{{ celeryd.log_name }}" />
+          <propval name="log_level" type="astring" value="WARNING" />
+          <propval name="time_limit" type="astring" value="{{ celeryd.timelimit }}" />
+          <propval name="concurrency" type="astring" value="{{ celeryd.num_workers }}" />
+          <propval name="nodes" type="astring" value="{{ celeryd.nodes }}" />
+        </property_group>
+        <template>
+          <common_name>
+            <loctext xml:lang="C">CeleryD</loctext>
+          </common_name>
+        </template>
+    </instance>
+    <stability value="Evolving" />
+  </service>
+</service_bundle>

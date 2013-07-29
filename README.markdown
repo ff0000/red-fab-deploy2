@@ -7,9 +7,6 @@ This project is specifically targeted at deploying websites built using
 the red-start project creation tool. Basically this means you must be using
 git and follow the same folder and file layout as found in that tool.
 
-This project was inspired by `django-fab-deploy <http://packages.python.org/django-fab-deploy>`
-and `cuisine <https://github.com/ff0000/cuisine/>`.
-
 These tools are being geared towards deploying on Joyent but can be extended to be used on other providers.
 
 ## Installation
@@ -28,15 +25,13 @@ To use the joyent provider you will need smartdc
 
 The first thing you need to do is set up your fabfile. This file should import * from fab_deploy. As well as specify which provider this setup is for. You do this by import * from that package. For example:
 
-    from fab_deploy.joyent import *
+    from fab_deploy2.joyent import *
 
 ### Server Configs
 
 In your projects deploy folder there should be a file named servers.ini. This file keeps track of the different types of servers and any relationships between them. As you add servers using this tool the file will be updated. You also configure firewalls using this file by specifing which ports should be open to which other roles.
 
 Fabric roles are also setup based on the information in this file. So adding -R app-server for example will run your specifed command on all servers in that section of the config file.
-
-Your git remotes will also be scanned so that you can refer to remote servers by their git names. So if you have a git remote named web1 -H web1 will be a valid host.
 
 ### Overriding behavior
 

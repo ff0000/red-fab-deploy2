@@ -1,4 +1,0 @@
-include *.txt
-include *.markdown
-recursive-include fab_deploy *.py
-recursive-include fab_deploy/default-configs *

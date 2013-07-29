@@ -4,63 +4,70 @@
 Reference
 =========
 
-fab_deploy
-==========  
+fab_deploy2
+==========
 
-.. automodule:: fab_deploy
-    :members: 
+.. automodule:: fab_deploy2
+    :members:
 
-.. automodule:: fab_deploy.deploy
-    :members: pre_deploy, deploy, migrate
+.. automodule:: fab_deploy2.deploy
+    :members:
 
+.. automodule:: fab_deploy2.tasks
+    :members:
 
-.. automodule:: fab_deploy.functions
-    :members: 
+.. automodule:: fab_deploy2.functions
+    :members:
 
-
-.. automodule:: fab_deploy.config
-	:members: 
+.. automodule:: fab_deploy2.config
+	:members:
 
 fab_deploy.joyent
-================= 
+=================
 
-.. automodule:: fab_deploy.joyent.api
-	:members: 
+.. automodule:: fab_deploy2.joyent.api
+	:members:
 
-.. automodule:: fab_deploy.joyent.firewall
-	:members: 
+.. automodule:: fab_deploy2.joyent.celery
+	:members:
 
-.. automodule:: fab_deploy.joyent.git
-	:members: 
+.. automodule:: fab_deploy2.joyent.firewall
+	:members:
 
-.. automodule:: fab_deploy.joyent.gunicorn
-	:members: 
+.. automodule:: fab_deploy2.joyent.gunicorn
+	:members:
 
-.. automodule:: fab_deploy.joyent.manage
-	:members: 	
+.. automodule:: fab_deploy2.joyent.nginx
+	:members:
 
-.. automodule:: fab_deploy.joyent.nginx
-	:members: 	
+.. automodule:: fab_deploy2.joyent.postgres
+	:members:
 
-.. automodule:: fab_deploy.joyent.postgres
-	:members: 	
+.. automodule:: fab_deploy2.joyent.python
+	:members:
 
-.. automodule:: fab_deploy.joyent.setup
-	:members: 	
+.. automodule:: fab_deploy2.joyent.redis
+	:members:
 
-.. automodule:: fab_deploy.joyent.utils
-	:members: 
+.. automodule:: fab_deploy2.joyent.servers
+	:members:
+
+.. automodule:: fab_deploy2.joyent.snmp
+	:members:
+
+.. automodule:: fab_deploy2.joyent.utils
+	:members:
 
 fab_deploy.local
 ================
 
-.. automodule:: fab_deploy.local.config
+.. automodule:: fab_deploy2.local.config
 	:members:
 
-.. automodule:: fab_deploy.local.deploy
+.. automodule:: fab_deploy2.local.deploy
 	:members:
 
-.. automodule:: fab_deploy.local.git
+.. automodule:: fab_deploy2.local.git
 	:members:
 
 Indices and tables

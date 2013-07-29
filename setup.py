@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from distutils.core import setup
 import re
+import os
 
 """
 Some methods were grabbed from:
@@ -29,29 +30,34 @@ def parse_dependency_links(file_name):
 
 	return dependency_links
 
+base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'fab_deploy2'))
+data_files = []
+for dirpath, dirnames, filenames in os.walk(os.path.join(base_path, 'default-configs')):
+    # Ignore dirnames that start with '.'
+    for i, dirname in enumerate(dirnames):
+        if dirname.startswith('.'): del dirnames[i]
+    files = [os.path.join(dirpath, f)[len(base_path)+1:] \
+                            for f in filenames if not f.endswith('.pyc')]
+    data_files.extend(files)
+
 setup(
-    name = 'red-fab-deploy',
+    name = 'red-fab-deploy2',
     packages=[
-		'fab_deploy',
-		'fab_deploy.base',
-		'fab_deploy.red_hat',
-		'fab_deploy.ubuntu',
-		'fab_deploy.joyent',
-        'fab_deploy.amazon',
-		'fab_deploy.local',
+		'fab_deploy2',
+		'fab_deploy2.base',
+		'fab_deploy2.joyent',
+		'fab_deploy2.local',
 		],
-	version = '0.0.10',
+	version = '0.2.0',
     author='RED Interactive Agency',
     author_email='geeks@ff0000.com',
-
+    include_package_data=True,
     package_data={
-        'fab_deploy': [
-            'default-configs/*',
-        ]
+        'fab_deploy2': data_files
     },
 
-    url='http://www.github.com/ff0000/red-fab-deploy/',
-    download_url = 'http://www.github.com/ff0000/red-fab-deploy/',
+    url='http://www.github.com/ff0000/red-fab-deploy2/',
+    download_url = 'http://www.github.com/ff0000/red-fab-deploy2/',
 
     license = 'MIT license',
     description = """ Code deployment tool """,
