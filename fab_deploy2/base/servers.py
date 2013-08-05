@@ -102,8 +102,8 @@ class BaseServer(MultiTask):
         raise NotImplementedError()
 
     def _update_firewalls(self):
-        functions.execute_on_host('firewall.setup')
         if self.setup_firewall:
+            functions.execute_on_host('firewall.setup')
             # Update any section where this section appears
             for section in env.config_object.server_sections():
                 if self.config_section in env.config_object.get_list(section,
@@ -200,7 +200,7 @@ class LBServer(BaseServer):
         default = {
             'nginx' : { 'upstream_addresses' : app_servers }
         }
-        context = super(AppServer, self).get_context()
+        context = super(LBServer, self).get_context()
         return functions.merge_context(context, default)
 
     @task_method
@@ -241,13 +241,16 @@ class AppServer(LBServer):
             functions.execute_on_host('gunicorn.update')
 
     def get_context(self):
+        lbs = [ "{0}:8000".format(x) for x in \
+                            env.config_object.get_list('load-balancer',
+                                          env.config_object.INTERNAL_IPS) ]
         defaults = {
             'nginx' : { 'lbs' : lbs },
             'gunicorn' : { 'listen_address' : '0.0.0.0:8000' }
         }
 
         context = super(AppServer, self).get_context()
-        return functions.merge_context(context, default)
+        return functions.merge_context(context, defaults)
 
 class DBServer(BaseServer):
     """
