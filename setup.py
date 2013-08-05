@@ -46,6 +46,8 @@ setup(
 		'fab_deploy2',
 		'fab_deploy2.base',
 		'fab_deploy2.joyent',
+        'fab_deploy2.ubuntu',
+        'fab_deploy2.amazon',
 		'fab_deploy2.local',
 		],
 	version = '0.2.0',
