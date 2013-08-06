@@ -8,6 +8,9 @@ from fabric.contrib.files import append
 from fabric.tasks import Task
 
 class Celeryd(base_celery.Celeryd):
+    """
+    Install celery and set it up with supervisor.
+    """
 
     user = 'www-data'
     group = 'www-data'

@@ -9,7 +9,7 @@ from fabric.contrib.files import append
 
 class Gunicorn(base_gunicorn.Gunicorn):
     """
-    Install gunicorn and set it up with svcadm.
+    Install gunicorn and set it up with supervisor.
     """
 
     user = 'www-data'
