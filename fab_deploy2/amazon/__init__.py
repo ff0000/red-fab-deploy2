@@ -6,6 +6,8 @@ import postgres
 import utils
 import servers
 import python
+import redis
+
 from fabric.api import env
 
 env.platform = 'amazon'

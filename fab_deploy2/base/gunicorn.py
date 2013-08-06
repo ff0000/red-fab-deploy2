@@ -54,6 +54,7 @@ class Gunicorn(ServiceContextTask):
         functions.render_template("gunicorn/gunicorn.pt", context[self.context_name]['config_location'], context=context)
         script = functions.render_template("gunicorn/start_gunicorn.sh", context[self.context_name]['start_script'], context=context)
         sudo('chmod +x {}'.format(script))
+        self._setup_service()
         return context
 
     def _setup_logs(self):
@@ -71,7 +72,6 @@ class Gunicorn(ServiceContextTask):
     def setup(self):
         functions.execute_on_host('python.setup', packages=['gunicorn'])
         self.upload_templates()
-        self._setup_service()
         path = self._setup_logs()
         self._setup_rotate(path)
 
