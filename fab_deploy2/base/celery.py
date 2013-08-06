@@ -13,7 +13,7 @@ class Celeryd(ServiceContextTask):
 
     context_name = 'celeryd'
 
-    log_dir = '/var/log/gunicorn'
+    log_dir = '/var/log/celery'
     log_name = 'celeryd.log'
 
     name = 'celeryd'

@@ -1,5 +1,5 @@
 {% block def_command %}
-COMMAND="{{ python.location }}bin/python {{ code_path }}project/manage.py celeryd"
+COMMAND="{{ python.location }}bin/python {{ code_path }}/project/manage.py celeryd"
 {% endblock %}
 
 {% block newrelic_setup %}

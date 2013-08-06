@@ -7,6 +7,7 @@ import utils
 import servers
 import python
 import redis
+import celery
 
 from fabric.api import env
 

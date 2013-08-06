@@ -7,6 +7,7 @@ from fabric.context_managers import settings
 def start_or_restart_supervisor(name, hosts=[]):
     """
     """
+    sudo('supervisorctl update')
     with settings(warn_only=True):
         result = sudo('supervisorctl status {0}'.format(name))
         if 'RUNNING' in result:

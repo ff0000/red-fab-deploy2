@@ -2,6 +2,7 @@ import os
 
 from fab_deploy2.base import celery as base_celery
 from fab_deploy2.tasks import task_method
+from fab_deploy2 import functions
 
 from fabric.api import sudo, env
 from fabric.contrib.files import append
@@ -18,21 +19,36 @@ class Celeryd(base_celery.Celeryd):
 
     @task_method
     def start(self):
-        sudo('supervisorctl start %s' % self.get_name())
+        functions.execute_on_host('utils.start_or_restart_supervisor', name=self.name)
 
     @task_method
     def stop(self):
-        sudo('supervisorctl stop %s' % self.get_name())
+        sudo('supervisorctl stop %s' % self.name)
+
+    def upload_templates(self):
+        context = super(Celeryd, self).upload_templates()
+        functions.render_template("celery/supervisor_celeryd.conf",
+                        os.path.join(env.configs_path, "celery/supervisor_{0}.conf".format(self.name)),
+                        context=context)
+        return context
 
     def _setup_service(self, env_value=None):
         # we use supervisor to control gunicorn
         sudo('apt-get -y install supervisor')
-        celery_conf = os.path.join(env.remote_configs,
-                                     'celery/%s.conf' % self.celery_name )
-        celeryb_conf = os.path.join(env.remote_configs,
-                                     'celery/%s.conf' % self.celerybeat_name )
-        text = 'files = %s, %s' % (celery_conf, celeryb_conf)
+        celery_conf = os.path.join(env.configs_path, "celery/supervisor_{0}.conf".format(self.name))
+        text = 'files = %s' % celery_conf
         append(self.conf_file, text, use_sudo=True)
-        sudo('supervisorctl update')
+
+    def _setup_rotate(self, path):
+        text = [
+        "%s {" % path,
+        "    copytruncate",
+        "    size 1M",
+        "    rotate 5",
+        "}"]
+        sudo('touch /etc/logrotate.d/%s.conf' % self.name)
+        for t in text:
+            append('/etc/logrotate.d/%s.conf' % self.name,
+                                        t, use_sudo=True)
 
 Celeryd().as_tasks()
