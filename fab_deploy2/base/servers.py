@@ -73,8 +73,7 @@ class BaseServer(MultiTask):
 
             ips = env.config_object.get_list(config_section,
                                 env.config_object.INTERNAL_IPS)
-            results = functions.execute_on_host('utils.get_ip', None)
-            internal_ip = results[env.host_string]
+            internal_ip = functions.execute_on_host('utils.get_ip', None)
             ips.append(internal_ip)
 
             env.config_object.set_list(config_section,
