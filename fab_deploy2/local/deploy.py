@@ -149,7 +149,11 @@ class PrepDeploy(Task):
             f.write(template)
 
     def _record_spots(self, branch):
-        local('git log --pretty=format:"%h" -n 1 {0} -- {2} > {1}'.format(branch, os.path.join(env.build_dir, STATIC_VERSION), env.track_static))
+        local('git log --pretty=format:"%h" -n 1 {0} -- {1} > {2}'.format(
+            branch,
+            os.path.join(env.project_path, env.track_static),
+            os.path.join(env.build_dir, STATIC_VERSION)
+        ))
 
     def run(self, branch=None):
         if not branch:
