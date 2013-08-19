@@ -1,4 +1,5 @@
 {% block basic %}
+MEDIA_ROOT = '{{ uploads_dir }}'
 {% endblock %}
 
 {% block logging %}

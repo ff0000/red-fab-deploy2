@@ -142,6 +142,13 @@ class PrepDeploy(Task):
             template_name = "django/{0}".format(role)
 
         context = functions.get_role_context(role).get('django', {})
+
+        # Update media root
+        uploads_dir = functions.execute_on_host('nginx.context')['uploads_location']
+        context.update({
+            "uploads_dir": uploads_dir,
+            })
+
         template = functions.template_to_string(template_name, context)
         with open(os.path.join(env.build_dir, 'project',
                                'settings', '__init__.py'),
