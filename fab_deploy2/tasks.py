@@ -116,8 +116,10 @@ class _ContextMixin(object):
             context_dict = env.context.get(self.namespace, {})
             role = env.host_roles.get(env.host_string)
             if role:
-
-                context_dict.update()
+                role_dict = functions.get_role_context(role)
+                if role_dict:
+                    role_dict = role_dict.get(self.namespace, {})
+                    context_dict.update(role_dict)
 
             if key in context_dict:
                 return context_dict.get(key)
