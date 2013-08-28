@@ -9,6 +9,7 @@ import snmp
 import celery
 import redis
 import python
+import haproxy
 
 from fabric.api import env
 
