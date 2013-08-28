@@ -1,11 +1,11 @@
 import os
 
-from fabric.api import local, env, task, cd, run
+from fabric.api import local, env, task, cd, run, settings
 from fabric.decorators import runs_once
 
 from fab_deploy2 import functions
 @task(hosts=[])
-def deploy(branch=None, update_configs=False):
+def deploy(branch=None, update_configs=False, hosts=None):
     """
     Deploy this project.
 
@@ -26,7 +26,8 @@ def deploy(branch=None, update_configs=False):
 
     functions.execute_on_host(task_name, branch=branch,
                               update_configs=update_configs)
-    if env.host_string == env.hosts[-1]:
+
+    if env.host_string == env.all_hosts[-1]:
         task_name = "servers.{0}.restart_services".format(
                             env.role_name_map.get(role))
         functions.execute_on_host(task_name)
