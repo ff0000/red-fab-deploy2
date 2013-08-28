@@ -256,17 +256,26 @@ class DBServer(BaseServer):
     name = 'db_server'
     config_section = 'db-server'
 
-    def run(self):
+    def _setup_db(self):
+        dict = functions.execute_on_host('postgres.master_setup',
+                        section=self.config_section,
+                        save_config=True)
+
+    @task_method
+    def setup(self):
         self._secure_ssh()
         self._set_profile()
 
         self._update_config(self.config_section)
         self._add_snmp(self.config_section)
         self._update_firewalls()
-        dict = functions.execute_on_host('postgres.master_setup',
-                        section=self.config_section,
-                        save_config=True)
+        self._setup_db()
         self._save_config()
+
+    @task_method
+    def context(self):
+        return self.get_context()
+
 
 class DBSlaveServer(DBServer):
     """
@@ -275,9 +284,13 @@ class DBSlaveServer(DBServer):
     name = 'slave_db'
     config_section = 'slave-db'
 
-    def _get_master(self):
-        cons = env.config_object.get_list('db-server',
+    def _get_master_options(self):
+        return env.config_object.get_list('db-server',
                                           env.config_object.CONNECTIONS)
+
+    def _get_master(self):
+        cons = self._get_master_options()
+
         n = len(cons)
         if n == 0:
             print ('I could not find db server in server.ini.'
@@ -300,20 +313,10 @@ class DBSlaveServer(DBServer):
 
         return master
 
-    def run(self):
-        """
-        """
-        self._secure_ssh()
-        self._set_profile()
-
-        self._update_config(self.config_section)
+    def _setup_db(self):
         master = self._get_master()
-        self._add_snmp()
-        self._update_firewalls()
-
         functions.execute_on_host('postgres.slave_setup', master=master,
                                     section=self.config_section)
-        self._save_config()
 
 
 class DevServer(AppServer):
