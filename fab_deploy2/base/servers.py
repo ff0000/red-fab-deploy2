@@ -250,7 +250,7 @@ class AppServer(LBServer):
             'gunicorn' : { 'listen_address' : '0.0.0.0:8000' }
         }
 
-        context = super(AppServer, self).get_context()
+        context = super(LBServer, self).get_context()
         return functions.merge_context(context, defaults)
 
 class DBServer(BaseServer):

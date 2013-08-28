@@ -97,8 +97,8 @@ def merge_context(context, defaults):
             context[k] = v
         else:
             for key, val in v.items():
-                if not key in context:
-                    context[k][key] = v
+                if not key in context[k]:
+                    context[k][key] = val
     return context
 
 def execute_on_host(*args, **kwargs):
