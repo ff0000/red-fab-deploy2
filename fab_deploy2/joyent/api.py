@@ -8,8 +8,8 @@ from fab_deploy2 import functions
 
 from smartdc import DataCenter
 
-DEFAULT_PACKAGE = 'Small 1GB'
-DEFAULT_DATASET = 'base64'
+DEFAULT_PACKAGE = 'g3-standard-1.75-kvm'
+DEFAULT_DATASET = 'sdc:sdc:base64'
 
 class New(Task):
     """
@@ -64,7 +64,8 @@ class New(Task):
             print "To use the joyent api you must add a joyent_account value to your env"
             sys.exit(1)
 
-        setup_name = 'setup.%s' % kwargs.get('type')
+        setup_name = 'servers.%s.setup' % kwargs.get('type')
+        config_name = 'servers.%s.api_config' % kwargs.get('type')
 
         task = functions.get_task_instance(setup_name)
 
@@ -72,14 +73,17 @@ class New(Task):
         default_package = DEFAULT_PACKAGE
 
         if task:
-            if hasattr(task, 'dataset'):
-                default_dataset = task.dataset
-            if hasattr(task, 'server_size'):
-                default_package = task.server_size
+            results = execute(config_name, hosts=['fake'])['fake']
+            config_section = results['config_section']
+            if 'dataset' in results:
+                default_dataset = results['dataset']
+            if 'server_size' in results:
+                default_package = results['server_size']
         else:
             print "I don't know how to add a %s server" % kwargs.get('type')
             sys.exit(1)
 
+        assert config_section
         location = kwargs.get('data_center')
         if not location and env.get('joyent_default_data_center'):
             location = env.joyent_default_data_center
@@ -92,28 +96,44 @@ class New(Task):
         allow_agent = env.get('allow_agent', False)
         sdc = DataCenter(location=location, key_id=key_id, allow_agent=allow_agent)
 
-        name = functions.get_remote_name(None, task.config_section,
+        name = functions.get_remote_name(None, config_section,
                                          name=kwargs.get('name'))
+
+        dataset = kwargs.get('data_set', default_dataset)
+        datasets = sdc.datasets(search=dataset)
+        if datasets:
+            dataset_id = datasets[0]['id']
+        else:
+            print "couldn't find a dataset %s. Here is what we found." % dataset
+            print datasets
+            sys.exit(1)
+
+        package = kwargs.get('package', default_package)
+        packages = sdc.packages(name=package)
+        if len(packages) != 1:
+            print "couldn't find a package %s. Here is what we found." % package
+            print packages
+            sys.exit(1)
+        else:
+            package_id = packages[0]['id']
+
         new_args = {
             'name' : name,
-            'dataset' : kwargs.get('data_set', default_dataset),
+            'dataset' : dataset_id,
             'metadata' : kwargs.get('metadata', {}),
             'tags' : kwargs.get('tags', {}),
-            'package' : kwargs.get('package', default_package)
+            'package' : package_id
         }
 
         machine = sdc.create_machine(**new_args)
+        print 'waiting for machine to come up'
+        machine.poll_until('running')
 
         public_ip = machine.public_ips[0]
         print "added machine %s" % public_ip
         host_string = 'admin@%s' % public_ip
-
-        print "waiting for machine to be ready"
-        while machine.status() != 'running':
-            print '.'
-            time.sleep(5)
         print 'done'
 
-        execute(setup_name, name=name, hosts=[host_string])
+        execute(setup_name, hosts=[host_string])
 
 add_server = New()

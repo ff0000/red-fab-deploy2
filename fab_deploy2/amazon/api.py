@@ -160,7 +160,8 @@ class New(Task):
         conn = get_ec2_connection(server_type='ec2', **kwargs)
 
         type = kwargs.get('type')
-        setup_name = 'setup.%s' % type
+        setup_name = 'servers.%s.setup' % type
+        config_name = 'servers.%s.api_config' % kwargs.get('type')
 
         instance_type = DEFAULT_INSTANCE_TYPE
 
@@ -170,14 +171,17 @@ class New(Task):
 
         task = functions.get_task_instance(setup_name)
         if task:
-            if hasattr(task, 'instance_type'):
-                instance_type = task.instance_type
-            if hasattr(task, 'ami'):
-                ami_id = task.ami
+            results = execute(config_name, hosts=['fake'])['fake']
+            config_section = results['config_section']
+            if 'instance_type' in results:
+                instance_type = results['instance_type']
+            if 'ami' in results:
+                ami_id = results['ami']
         else:
             print "I don't know how to add a %s server" % type
             sys.exit(1)
 
+        assert config_section
         amzn = env.get('AWS_CREDENTIAL',
                        os.path.join(env.deploy_path, 'amazon.ini'))
         parser = ConfigParser()
@@ -195,9 +199,9 @@ class New(Task):
             sys.exit(1)
 
         image = conn.get_image(ami_id)
-        security_group = get_security_group(conn, task.config_section)
+        security_group = get_security_group(conn, config_section)
 
-        name = functions.get_remote_name(None, task.config_section,
+        name = functions.get_remote_name(None, config_section,
                                          name=kwargs.get('name'))
         SERVER = {
             'image_id':         image.id,

@@ -115,6 +115,10 @@ class BaseServer(MultiTask):
         """
         return env.context.get(self.config_section, {})
 
+    @task_method
+    def api_config(self):
+        return { 'config_section' : self.config_section }
+
 class LBServer(BaseServer):
     """
     Setup a load balancer

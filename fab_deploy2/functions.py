@@ -42,40 +42,19 @@ def call_shell_command(command):
     """
     return _command(command, shell=True)
 
-def gather_remotes():
-    """
-    """
-    raw_remote = call_command('git', 'remote', '-v')
-    remotes = {}
-    for line in raw_remote.splitlines():
-        parts = line.split()
-        remotes[parts[0]] = urlparse.urlparse(parts[1]).netloc
-    return remotes
-
 def get_remote_name(host, prefix, name=None):
     """
     """
     assert prefix
 
-    if not host in env.git_reverse:
-        if name:
-            return name
-
-        count = len([x for x in env.git_remotes if x.startswith(prefix)])
-        count = count + 1
-
-        while True:
-            if not name or name in env.git_remotes:
-                count = count + 1
-                name = prefix + str(count)
-            else:
-                env.git_reverse[host] = name
-                env.git_remotes[name] = host
-                break
+    l = env.config_object.get_list(prefix, env.config_object.CONNECTIONS)
+    i = 0
+    if host in l:
+        i = l.index(host)+1
     else:
-        name = env.git_reverse[host]
+        i = len(l) + 1
 
-    return name
+    return "{0}{1}".format(prefix, i)
 
 def get_task_instance(name):
     """
