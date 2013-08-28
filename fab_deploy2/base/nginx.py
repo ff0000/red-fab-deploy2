@@ -41,7 +41,8 @@ class Nginx(ServiceContextTask):
         'uploads_expiry' : '1M',
         'auth_file' : '',
         'lbs' : [],
-        'upstream_addresses' : ['127.0.0.1:8000'],
+        'upstream_addresses' : ['127.0.0.1'],
+        'upstream_port' : '8000',
         'template' : 'nginx/nginx.conf',
     }
 

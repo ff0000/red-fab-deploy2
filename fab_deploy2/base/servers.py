@@ -193,9 +193,8 @@ class LBServer(BaseServer):
 
 
     def get_context(self):
-        app_servers = [ "{0}:8000".format(x) for x in \
-                            env.config_object.get_list('app-server',
-                                          env.config_object.INTERNAL_IPS) ]
+        app_servers = env.config_object.get_list('app-server',
+                                          env.config_object.INTERNAL_IPS)
         default = {
             'nginx' : { 'upstream_addresses' : app_servers }
         }
@@ -240,9 +239,8 @@ class AppServer(LBServer):
             functions.execute_on_host('gunicorn.update')
 
     def get_context(self):
-        lbs = [ "{0}:8000".format(x) for x in \
-                            env.config_object.get_list('load-balancer',
-                                          env.config_object.INTERNAL_IPS) ]
+        lbs = env.config_object.get_list('load-balancer',
+                                          env.config_object.INTERNAL_IPS)
         defaults = {
             'nginx' : { 'lbs' : lbs },
             'gunicorn' : { 'listen_address' : '0.0.0.0:8000' }
