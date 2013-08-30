@@ -38,7 +38,10 @@ class Haproxy(ServiceContextTask):
         'cookie_mode' : 'insert',
         'cookie_prefix' : 'a-',
         'template' : 'haproxy/haproxy.cfg',
-        'remote_config_path' : '/opt/local/etc/haproxy.cfg'
+        'remote_config_path' : '/opt/local/etc/haproxy.cfg',
+        'loghost' : '127.0.0.1',
+        'loglevel' : 'notice',
+        'logfile' : '/var/log/haproxy.log'
     }
 
     @task_method
@@ -53,10 +56,14 @@ class Haproxy(ServiceContextTask):
     def _install_package(self):
         raise NotImplementedError()
 
+    def _setup_logging(self):
+        raise NotImplementedError()
+
     def _setup_config(self, template=None,):
         if not template:
             template = self.template
 
         context = self.get_template_context()
+        self._setup_logging()
         config = functions.render_template(template, context=context)
         sudo('ln -sf %s %s' % (config, self.remote_config_path))
