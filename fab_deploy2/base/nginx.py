@@ -28,6 +28,8 @@ class Nginx(ServiceContextTask):
         'access_log' : '/var/log/nginx/access.log',
         'error_log' : '/var/log/nginx/error.log',
         'do_cache' : False,
+        'cache_key' : '$scheme$request_uri',
+        'cache_time' : '2m',
         'cache_location' :' /var/www/cache',
         'cache_tmp_location' : '/var/www/cache-tmp',
         'cache_inactive' : '60m',
