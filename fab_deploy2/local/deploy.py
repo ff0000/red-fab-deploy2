@@ -126,8 +126,8 @@ class PrepDeploy(Task):
         local('{0}/env/bin/python {0}/project/manage.py collectstatic --clear --noinput'.format(env.project_path))
 
         # restore the local gitkeep file in collected-static
-        local('touch {0}/{1}'.format(os.path.join(
-            env.project_path, 'collected-static'), '.gitkeep'))
+        local('touch {0}'.format(os.path.join(
+            env.project_path, 'collected-static', '.gitkeep')))
 
     def _restore_working_dir(self):
         with settings(warn_only=True):
