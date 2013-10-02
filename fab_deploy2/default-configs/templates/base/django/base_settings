@@ -1,5 +1,5 @@
 {% block basic %}
-MEDIA_ROOT = '{{ uploads_dir }}'
+MEDIA_ROOT = '{{ nginx.uploads_location }}/'
 {% endblock %}
 
 {% block logging %}
