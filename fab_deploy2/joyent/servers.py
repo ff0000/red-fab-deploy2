@@ -7,8 +7,7 @@ from fab_deploy2.base import servers as base_servers
 class JoyentMixin(object):
 
     def _set_profile(self):
-        append('/etc/profile', 'CC="gcc -m64"; export CC', use_sudo=True)
-        append('/etc/profile', 'LDSHARED="gcc -m64 -G"; export LDSHARED', use_sudo=True)
+        pass
 
     def _ssh_restart(self):
         run('svcadm restart ssh')
