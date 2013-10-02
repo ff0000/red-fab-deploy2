@@ -331,10 +331,13 @@ class DevServer(AppServer):
     config_section = 'dev-server'
     git_branch = 'develop'
 
-    def _setup_services(self):
-        super(DevServer, self)._setup_services()
+    def _setup_database(self):
         functions.execute_on_host('postgres.master_setup',
                                   section=self.config_section)
+
+    def _setup_services(self):
+        super(DevServer, self)._setup_services()
+        self._setup_database()
 
     def get_context(self):
         # We don't want to inhert this from appserver
