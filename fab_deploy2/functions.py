@@ -109,6 +109,19 @@ def execute_on_host(*args, **kwargs):
     else:
         return r
 
+def get_context_from_role(key):
+    value = env.context.get('newrelic')
+    role = env.host_roles.get(env.host_string)
+    if role:
+        role_dict = get_role_context(role)
+        role_value = role_dict.get(key)
+
+        if role_value and isinstance(value, dict) and isinstance(role_value, dict):
+            value.update(role_value)
+        elif role_value:
+            value = role_value
+    return value
+
 def get_role_context(role):
     if not env.get('_role_cache'):
         env._role_cache = {}

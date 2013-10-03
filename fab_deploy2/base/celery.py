@@ -42,6 +42,7 @@ class Celeryd(ServiceContextTask):
     def get_template_context(self):
         context = super(Celeryd, self).get_template_context()
         context['python'] = functions.execute_on_host('python.context')
+        context['newrelic'] = functions.get_context_from_role('newrelic')
         return context
 
     def upload_templates(self):

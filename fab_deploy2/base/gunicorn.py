@@ -29,7 +29,7 @@ class Gunicorn(ServiceContextTask):
         'log_dir' : log_dir,
         'log_name' : log_name,
         'gunicorn_name' : gunicorn_name,
-        'daemonize' : True
+        'daemonize' : True,
     }
 
     def _setup_service(self):
@@ -47,6 +47,7 @@ class Gunicorn(ServiceContextTask):
     def get_template_context(self):
         context = super(Gunicorn, self).get_template_context()
         context['python'] = functions.execute_on_host('python.context')
+        context['newrelic'] = functions.get_context_from_role('newrelic')
         return context
 
     def upload_templates(self):
