@@ -49,7 +49,6 @@ class Celeryd(ServiceContextTask):
         context = self.get_template_context()
         script = functions.render_template("celery/start_celeryd.sh", context[self.context_name]['start_script'], context=context)
         sudo('chmod +x {}'.format(script))
-        self._setup_service()
         return context
 
     def _setup_logs(self):
@@ -72,7 +71,9 @@ class Celeryd(ServiceContextTask):
         self.upload_templates()
         path = self._setup_logs()
         self._setup_rotate(path)
+        self._setup_service()
 
     @task_method
     def update(self):
         self.upload_templates()
+        self._setup_service()
