@@ -52,7 +52,13 @@ NEW_RELIC_CONFIG_FILE="{{ newrelic.config }}"
 
 # New Relic startup script
 NEW_RELIC_ADMIN="{{ python.location }}bin/newrelic-admin"
-CELERYD_MULTI=$NEW_RELIC_ADMIN" run-program "$CELERYD_MULTI
+
+if [ -f $NEW_RELIC_CONFIG_FILE ] && [ -f $NEW_RELIC_ADMIN ]
+then
+    export NEW_RELIC_ENVIRONMENT
+    export NEW_RELIC_CONFIG_FILE
+    CELERYD_MULTI=$NEW_RELIC_ADMIN" run-program "$CELERYD_MULTI
+fi
 {% endif %}
 {% endblock %}
 
