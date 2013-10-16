@@ -1,7 +1,6 @@
 import os
 
-from fabric.api import local, env, task, cd, run, settings
-from fabric.decorators import runs_once
+from fabric.api import local, env, task, cd, run, settings, execute
 
 from fab_deploy2 import functions
 @task(hosts=[])
@@ -28,6 +27,14 @@ def deploy(branch=None, update_configs=False, hosts=None):
                               update_configs=update_configs)
 
     if env.host_string == env.all_hosts[-1]:
-        task_name = "servers.{0}.restart_services".format(
-                            env.role_name_map.get(role))
-        functions.execute_on_host(task_name)
+        roles = {}
+        for x in env.all_hosts:
+            r = env.host_roles.get(x)
+            if not r in roles:
+                roles[r] = []
+            roles[r].append(x)
+
+        for r, v in roles.items():
+            task_name = "servers.{0}.restart_services".format(
+                                env.role_name_map.get(r))
+            execute(task_name, hosts=v)
