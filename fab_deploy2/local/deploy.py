@@ -48,6 +48,10 @@ class DeployCode(Task):
     def _sync_files(self, code_dir, static_dir, active_dir):
         """
         Sync all files, copy from last version if possible.
+
+        code_dir: the location of this code. Includes a git hash.
+        static_dir: the location of the static files, doesn't include hash
+        active dir: the location that code dir will be symlinked to
         """
 
         run('mkdir -p {0}'.format(code_dir))
@@ -60,8 +64,29 @@ class DeployCode(Task):
 
         run('mkdir -p {0}'.format(code_dir))
         run('cp -r /srv/updating/* {0}/'.format(code_dir))
-        run('rsync -rptov --delete-after --filter "P {0}*" "{1}/" "{2}"'.format(self.cache_prefix, code_static_dir, static_dir))
+        run('rsync -rptov --checksum  --delete-after --filter "P {0}*" "{1}/" "{2}"'.format(self.cache_prefix, code_static_dir, static_dir))
         run('ln -sfn {0} {1}/c-{2}'.format(code_static_dir, static_dir, static_hash))
+
+    def build_settings(self, code_dir):
+        template_name = 'django/base_settings'
+        role = env.host_roles.get(env.host_string)
+        if os.path.exists(os.path.join(env.deploy_path, 'templates',
+                        'django', role)):
+            template_name = "django/{0}".format(role)
+
+        context = functions.get_role_context(role).get('django', {})
+
+        # Update media root
+        context.update({
+            'nginx' : functions.execute_on_host('nginx.context')
+        })
+
+        template_location = functions.render_template(template_name, context=context)
+        run('cat {0} >> {1}'.format(template_location,
+                        os.path.join(code_dir, 'project',
+                                    'settings', '__init__.py')
+                        )
+        )
 
     def _post_sync(self, code_dir, static_dir, active_dir):
         """
@@ -69,6 +94,7 @@ class DeployCode(Task):
 
         Purges old deployments and links in active
         """
+        self.build_settings(code_dir)
         self._purge(static_dir)
         run('ln -sfn {0} {1}'.format(code_dir, active_dir))
 
@@ -138,26 +164,6 @@ class PrepDeploy(Task):
             if not result.failed:
                 local('git stash pop')
 
-    def build_settings(self):
-        template_name = 'django/base_settings'
-        role = env.host_roles.get(env.host_string)
-        if os.path.exists(os.path.join(env.deploy_path, 'templates',
-                        'django', role)):
-            template_name = "django/{0}".format(role)
-
-        context = functions.get_role_context(role).get('django', {})
-
-        # Update media root
-        context.update({
-            'nginx' : functions.execute_on_host('nginx.context')
-        })
-
-        template = functions.template_to_string(template_name, context)
-        with open(os.path.join(env.build_dir, 'project',
-                               'settings', '__init__.py'),
-                  "a") as f:
-            f.write(template)
-
     def _record_spots(self, branch):
         local('git log --pretty=format:"%h" -n 1 {0} -- {1} > {2}'.format(
             branch,
@@ -171,7 +177,6 @@ class PrepDeploy(Task):
 
         self._clean_working_dir(branch)
         execute('local.git.build', branch=branch, hosts=['none'])
-        self.build_settings()
         self._prep_static()
         local('cp -r {0}/collected-static {1}/'.format(env.project_path,
                                                     env.build_dir))
