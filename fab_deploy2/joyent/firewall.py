@@ -83,10 +83,7 @@ class FirewallSetup(ContextTask):
     """
 
     context_name = 'ipf'
-    default_context = {
-        'internal_interface' : 'net1',
-        'external_interface' : 'net0'
-    }
+    default_context = {}
     name = "setup"
 
     def get_task_context(self):
@@ -95,14 +92,16 @@ class FirewallSetup(ContextTask):
         if not role:
             raise Exception("Unknown role for %s" % env.host_string)
 
+        context['internal_interface'] = functions.execute_on_host('utils.get_interface')
+        context['external_interface'] = functions.execute_on_host('utils.get_interface', iprange='0.0.0.0')
         context['tcp_lines'] = TCPOptions().get_config_list(role,
                                     env.config_object,
-                                    self.internal_interface,
-                                    self.external_interface)
+                                    context['internal_interface'],
+                                    context['external_interface'])
         context['udp_lines'] = UDPOptions().get_config_list(role,
                                     env.config_object,
-                                    self.internal_interface,
-                                    self.external_interface)
+                                    context['internal_interface'],
+                                    context['external_interface'])
         return context
 
     def run(self):

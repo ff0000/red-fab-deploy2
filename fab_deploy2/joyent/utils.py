@@ -2,6 +2,14 @@ import random
 from fabric.api import task, run
 from fabric.context_managers import settings
 
+from fab_deploy2 import functions
+
+INTERNAL_RANGES = [
+    '10.0.0.0/8',
+    '192.168.0.0/16',
+    '172.16.0.0/12'
+]
+
 @task
 def get_ip(interface, hosts=[]):
     """
@@ -12,8 +20,21 @@ def get_ip_command(interface):
     """
     """
     if not interface:
-        interface = 'net1'
+        interface = functions.execute_on_host('utils.get_interface')
+
     return 'ifconfig %s | grep inet | grep -v inet6 | cut -d ":" -f 2 | cut -d " " -f 2' % interface
+
+@task
+def get_interface(iprange=None):
+    ranges = tuple(INTERNAL_RANGES)
+    if iprange:
+        ranges = [iprange]
+    for ip in ranges:
+        interface = run("netstat -r -f dst:{0} | tail -n 1 | tr -s ' ' ' ' | cut -d ' ' -f 6".format(ip))
+        if interface:
+            return interface
+
+    raise Exception("Couldn't find an matching interface")
 
 @task
 def start_or_restart(name, hosts=[]):
