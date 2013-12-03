@@ -10,6 +10,7 @@ import celery
 import redis
 import python
 import haproxy
+import backups
 
 from fabric.api import env
 

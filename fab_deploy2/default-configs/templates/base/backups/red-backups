@@ -1,0 +1,430 @@
+"""
+Backups for a directory.
+
+TODO:
+Encryption/Decryption
+S3 support
+"""
+
+import os
+import shutil
+import sys
+import subprocess
+import hashlib
+import argparse
+import time
+import logging
+import logging.config
+import random
+import string
+import socket
+import tempfile
+import gdbm
+import urllib
+
+{% block CONNECTION %}
+CONNECTION_INFO = {}
+{% endblock %}
+
+{% block mail %}
+MAIL = {
+    'from' : '{{ mail.from }}',
+    'to' : '{{ mail.to }}',
+    'subject' : '{{ mail.subject }}',
+    'credentials' : ('{{ mail.username }}', '{{ mail.password }}'),
+    'secure' : {% if mail.secure %}[]{% else %}None{% endif %},
+    'host' : '{{ mail.host }}',
+    'port' : '{{ mail.port }}'
+}
+{% endblock %}
+
+COMP_KEY = 'COMP_METHOD'
+MD5 = 'md5'
+TIME = 'time'
+NAME = 'name'
+SIZE = 'size'
+
+class Manta(object):
+    db_name = 'db.db'
+    lock_name = '.lock'
+
+    def __init__(self, bucket):
+        account_name = CONNECTION_INFO['account']
+        bucket = "/{0}/stor/{1}".format(account_name, bucket)
+        self.bucket = bucket
+        self.env = my_env = os.environ.update({
+            'MANTA_USER' : CONNECTION_INFO['account'],
+            'MANTA_KEY_ID' : CONNECTION_INFO['key'],
+            'MANTA_URL' : CONNECTION_INFO['url']
+        })
+
+
+    def acquire_lock(self, tmp_dir):
+        """
+        Write a .lock file to manta and read the contents
+        back. Manta says they guarentee write/read consistency.
+        So if we get the same back, we have the lock.
+        """
+
+        chars = "".join( [random.choice(string.letters[:26]) for i in xrange(15)] )
+        data = "{0}.{1}.{2}".format(socket.gethostname(), time.time(), chars)
+        lock_path = os.path.join(tmp_dir, '.lock')
+        key = self.path_to_key(self.lock_name)
+        logging.getLogger('red_backup').info("checking lock {0}".format(key))
+
+        proc = subprocess.Popen(['mls', key], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env)
+        output, errors = proc.communicate()
+
+        if proc.returncode != 0:
+            with open(lock_path, 'a') as f:
+                f.write(data)
+
+            self.upload(key, lock_path)
+            os.remove(lock_path)
+
+            output, errors = self._download(key)
+            return output == data
+
+        return False
+
+    def release_lock(self):
+        """
+        Delete the lock file
+        """
+        self.delete(self.path_to_key(self.lock_name))
+
+    def get_db(self, dirname):
+        """
+        Return the database that was stored
+        """
+        path = os.path.join(dirname, self.db_name)
+        self._download(self.path_to_key(self.db_name), path)
+        return gdbm.open(path, 'cf')
+
+    def upload_db(self, path):
+        self.upload(self.path_to_key(self.db_name), path)
+
+    def path_to_key(self, path):
+        """
+        Convert a local path to a key.
+        Url quotes each directory/filename and adds
+        the bucket as a directory prefix
+        """
+        parts = path.split(os.sep)
+        fixed = []
+        for part in parts:
+            if part:
+                fixed.append(urllib.quote_plus(part))
+        return os.path.join(self, self.bucket, *fixed)
+
+    def key_to_path(self, key):
+        """
+        Convert a key to a relative path.
+        Removes the bucket info and unurlquotes
+        """
+        key = key.replace(self.bucket, '').strip(os.sep)
+        parts = key.split(os.sep)
+        fixed = []
+        for part in parts:
+            if part:
+                fixed.append(urllib.unquote_plus(part))
+        return os.path.join(*fixed)
+
+    def local_from_key(self, key, local_parent):
+        return os.path.join(local_parent, self.key_to_path(key))
+
+    def download(self, key, local_parent, retries=0):
+        """
+        Downloads the remote file at `key`
+        to a local path specified by `local_parent`
+        Any needed dirs are created.
+        """
+
+        local = self.local_from_key(key, local_parent)
+        dirname = os.path.dirname(local)
+        if not os.path.exists(dirname):
+            subprocess.Popen(['mkdir', '-p', dirname], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env)
+        self._download(key, local)
+
+    def _download(self, key, local_path=None, retries=0):
+        logging.getLogger('red_backup').info("downloading {0}".format(key))
+        if local_path:
+            proc = subprocess.Popen(['mget', '-q', '-o', local_path, key],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            env=self.env)
+        else:
+            proc = subprocess.Popen(['mget', key], stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, env=self.env)
+
+        output, errors = proc.communicate()
+        if proc.returncode != 0:
+            if retries < 2:
+                time.sleep(.5)
+                return self._download(key, local_path, retries + 1)
+            else:
+                raise RuntimeError("Failed to download {0}: {1}".format(local_path, errors))
+        return output, errors
+
+    def ensure_dir(self, key, retries=0):
+        """
+        Creates any remote directories needed for `key`
+        """
+
+        dirname = os.path.dirname(key)
+        proc = subprocess.Popen(['mmkdir', '-p', dirname], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env)
+        output, errors = proc.communicate()
+        if proc.returncode != 0:
+            if retries < 2:
+                time.sleep(.5)
+                return self.ensure_dir(key, retries + 1)
+            else:
+                raise RuntimeError("Failed to mmkdir -p {0}, {1}".format(dirname, errors))
+
+    def upload(self, key, local_path, retries=0):
+        """
+        Uploads the file at `local_path` to `key`
+        """
+        self.ensure_dir(key)
+        logging.getLogger('red_backup').info("uploading {0}".format(key))
+        proc = subprocess.Popen(['mput', '-c', '2', '-f', local_path, key], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env)
+
+        output, errors = proc.communicate()
+        if proc.returncode != 0:
+            if retries < 2:
+                time.sleep(.5)
+                return self.upload(key, local_path, retries + 1)
+            else:
+                raise RuntimeError("Failed to mput -p {0} to {1}: {2}".format(local_path, key, errors))
+
+    def delete(self, key, retries=0):
+        """
+        Deletes the remote file at `key`
+        """
+
+        logging.getLogger('red_backup').info("deleting {0}".format(key))
+        proc = subprocess.Popen(['mrm', key], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env)
+        output, errors = proc.communicate()
+        if proc.returncode != 0:
+            if retries < 2:
+                time.sleep(.5)
+                return self.delete(key, retries + 1)
+            else:
+                raise RuntimeError("Failed to delete {0}: {1}".format(key, errors))
+
+# Calculates the MD5 of a file
+def md5(path):
+    m = hashlib.md5()
+
+    with open(path,'rb') as f:
+        while True:
+            chunk = f.read(8192)
+            if not chunk: break
+            m.update(chunk)
+
+    return m.hexdigest()
+
+def get_tracked_value(path, comp_method):
+    if os.path.exists(path):
+        if comp_method == MD5:
+            return md5(path)
+        elif comp_method == TIME:
+            return str(int(os.stat(path).st_mtime))
+        elif comp_method == SIZE:
+            return str(os.stat(path).st_size)
+        else:
+            return '1'
+    return None
+
+def set_tracked_value(path, value, comp_method):
+    # If we are going by time, set the time
+    if comp_method == TIME:
+        os.utime(path, (int(value), int(value)))
+
+def get_files_for_prefix(db, prefix=None):
+    k = db.firstkey()
+    while k != None:
+        if not prefix or k.startswith(prefix):
+            yield k
+        k = db.nextkey(k)
+
+def walker(directory):
+    for dirname, dirnames, filenames in os.walk(directory, topdown=False):
+        for filename in filenames:
+            yield os.path.join(dirname, filename)
+
+
+def backup(service, local, delete):
+
+    tmpdir = tempfile.mkdtemp()
+    try:
+        if not service.acquire_lock(tmpdir):
+            logging.getLogger('red_backup').warning("Couldn't get lock")
+            return
+
+        db = service.get_db(tmpdir)
+        new_db_path = os.path.join(tmpdir, 'new-db')
+        new_db = gdbm.open(new_db_path, 'nf')
+        if db.has_key(COMP_KEY):
+            comp_method = db[COMP_KEY]
+            del db[COMP_KEY]
+        else:
+            comp_method = SIZE
+
+        new_db[COMP_KEY] = comp_method
+        logging.getLogger('red_backup').info("Backing up {1} to {0} using {2} to compare".format(service.bucket, local, comp_method))
+
+        for path in walker(local):
+            key = service.path_to_key(path.replace(local, ''))
+            value = get_tracked_value(path, comp_method)
+            if not db.has_key(key) or db[key] != value:
+                if os.stat(path).st_size > 0:
+                    service.upload(key, path)
+                    logging.getLogger('red_backup').info("Uploaded {0}".format(path))
+                    new_db[key] = value
+            else:
+                new_db[key] = value
+
+            if db.has_key(key):
+                del db[key]
+
+        for key in get_files_for_prefix(db):
+            # Anything left must be purged
+            if delete:
+                service.delete(key)
+            # Just carry the item over so we don't
+            # loose it
+            else:
+                new_db[key] = db[key]
+
+        new_db.sync()
+        new_db.close()
+        db.close()
+
+        service.upload_db(new_db_path)
+        service.release_lock()
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def restore(service, local, restore_path):
+    tmpdir = tempfile.mkdtemp()
+
+    try:
+        if restore_path:
+            restore_path = service.path_to_key(restore_path)
+        db = service.get_db(tmpdir)
+
+        if db.has_key(COMP_KEY):
+            comp_method = db[COMP_KEY]
+            del db[COMP_KEY]
+        else:
+            comp_method = SIZE
+
+        logging.getLogger('red_backup').info("Downloading from {0} to {1} using {2} to compare".format(service.bucket, local, comp_method))
+
+        for key in get_files_for_prefix(db, restore_path):
+            path = service.local_from_key(key, local)
+            if get_tracked_value(path, comp_method) != db[key]:
+                service.download(key, local)
+                if db.has_key(key):
+                    set_tracked_value(path, db[key], comp_method)
+    finally:
+        shutil.rmtree(tmpdir)
+
+def init(service, comp_method):
+    tmpdir = tempfile.mkdtemp()
+    db_path = os.path.join(tmpdir, service.db_name)
+    db = gdbm.open(db_path, 'nf')
+    db[COMP_KEY] = comp_method
+    db.sync()
+    db.close()
+    service.upload_db(db_path)
+
+def get_logger_dict(verbose=False):
+    handlers = { 'console' : {
+                'level' : 'DEBUG',
+                'class': 'logging.StreamHandler',
+    }}
+    if MAIL:
+        handlers['mail_admins'] = {
+               'level': 'ERROR',
+                'class': 'logging.handlers.SMTPHandler',
+                'fromaddr' : MAIL['from'],
+                'toaddrs' : (MAIL['to'],),
+                'subject' : MAIL['subject'],
+                'credentials' : MAIL['credentials'],
+                'secure' : MAIL['secure'],
+                'mailhost' : (MAIL['host'], MAIL['port'])
+            }
+
+    # Don't propogate errors for this handler
+    return {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': handlers,
+        'loggers': {
+            'red_backup': {
+                'handlers': handlers.keys(),
+                'level': verbose and 'DEBUG' or 'ERROR',
+                'propagate': False,
+            },
+        }
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description = 'Red Backup',
+            prog = 'red-backup')
+
+    parser.add_argument('--verbose', dest='verbose', action='store_true')
+    parser.add_argument('--delete', action='store_true', dest='delete',
+                        help="Remove remote files that aren't present locally")
+    parser.add_argument('--restore_path', dest='restore_path', default='',
+            help="file or directories to restore. Only valid with restore action.")
+    parser.add_argument('--bucket', default='backups',
+            help="remote bucket name", dest='bucket')
+
+    parser.add_argument('--compare-method', dest='comp_method',
+            choices=[NAME, TIME, MD5, SIZE], default=SIZE,
+            help='Method to use to compare if files needs to be transfered. Only used on init.')
+
+    parser.add_argument('action',
+            choices=['backup', 'restore', 'init'],
+            help='backup or restore data')
+
+    parser.add_argument('local',
+            help="directory on local computer")
+
+    args = parser.parse_args()
+
+    action = args.action
+
+    local = args.local
+    assert os.path.isdir(local), "Invalid source directory"
+
+    config = get_logger_dict(args.verbose)
+    logging.config.dictConfig(config)
+
+    service = Manta(args.bucket)
+
+    if action == 'backup':
+        backup(service, local, args.delete)
+    elif action == "restore":
+        restore(service, local, args.restore_path)
+    elif action == "init":
+        init(service, args.comp_method)
+
+if __name__ == '__main__':
+    try:
+        main()
+        sys.exit(0)
+
+    except SystemExit, e:
+        sys.exit(e.code)
+
+    except KeyboardInterrupt:
+        sys.exit(1)
+
+    except Exception, e:
+        logging.getLogger('red_backup').error(u"Backup Error: %s" % e)
+        sys.exit(1)
