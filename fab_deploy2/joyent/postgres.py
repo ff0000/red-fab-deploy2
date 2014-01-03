@@ -166,21 +166,21 @@ class PostGISInstall(Task):
 
     def install_package(self):
         sudo("pkg_add postgresql91-postgis")
-        with settings(warn_only=True):
-            sudo("pkgin in posgresql91-postgis1.5.3nb5")
-        sudo("svcadm restart postgresql")
 
 
     def setup_postgis_template(self):
         POSTGIS_SQL_PATH = "/opt/local/share/postgresql/contrib/postgis-1.5"
-        run("sudo su postgres -c 'createdb -E UTF8 template_postgis'")
-        run("sudo su postgres -c 'createlang -d template_postgis plpgsql'")
-        run("sudo su postgres -c 'psql -d postgres -c \"UPDATE pg_database SET datistemplate='\\''true'\\'' WHERE datname='\\''template_postgis'\\'';\"'")
-        run("sudo su postgres -c 'psql -d template_postgis -f %s/postgis.sql'" % POSTGIS_SQL_PATH)
-        run("sudo su postgres -c 'psql -d template_postgis -f %s/spatial_ref_sys.sql'" % POSTGIS_SQL_PATH)
-        run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geometry_columns TO PUBLIC;\"'")
-        run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geography_columns TO PUBLIC;\"'")
-        run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON spatial_ref_sys TO PUBLIC;\"'")     
+        exists = run("sudo su postgres -c 'psql -l | grep template_postgis | wc -l'")
+        if exists == '0':
+            run("sudo su postgres -c 'createdb -E UTF8 template_postgis'")
+            with settings(warn_only=True):
+                run("sudo su postgres -c 'createlang -d template_postgis plpgsql'")
+            run("sudo su postgres -c 'psql -d postgres -c \"UPDATE pg_database SET datistemplate='\\''true'\\'' WHERE datname='\\''template_postgis'\\'';\"'")
+            run("sudo su postgres -c 'psql -d template_postgis -f %s/postgis.sql'" % POSTGIS_SQL_PATH)
+            run("sudo su postgres -c 'psql -d template_postgis -f %s/spatial_ref_sys.sql'" % POSTGIS_SQL_PATH)
+            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geometry_columns TO PUBLIC;\"'")
+            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geography_columns TO PUBLIC;\"'")
+            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON spatial_ref_sys TO PUBLIC;\"'")     
 
 
     def run(self):
