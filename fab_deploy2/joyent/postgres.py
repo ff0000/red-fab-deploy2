@@ -1,6 +1,5 @@
 import os
 import sys
-import time
 import tempfile
 
 from fabric.api import run, sudo, env, local, hide, settings
@@ -185,7 +184,6 @@ class PostGISInstall(Task):
 
     def run(self):
         self.install_package()
-        time.sleep(5) # sleeping to avoid trying to connect to a database that hasn't restarted
         self.setup_postgis_template()
 
 
