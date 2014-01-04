@@ -59,6 +59,7 @@ class SlaveSetup(JoyentMixin, base_postgres.SlaveSetup):
 
     name = 'slave_setup'
 
+
 class PGBouncerInstall(Task):
     """
     Set up PGBouncer on a database server
@@ -154,7 +155,40 @@ class PGBouncerInstall(Task):
         # start pgbouncer
         sudo('svcadm enable pgbouncer')
 
+
+class PostGISInstall(Task):
+    """
+    Set up PostGIS template for use on database server.
+    """
+
+    name = 'setup_postgis'
+
+    def install_package(self):
+        sudo("pkg_add postgresql91-postgis")
+
+
+    def setup_postgis_template(self):
+        POSTGIS_SQL_PATH = "/opt/local/share/postgresql/contrib/postgis-1.5"
+        exists = run("sudo su postgres -c 'psql -l | grep template_postgis | wc -l'")
+        if exists == '0':
+            run("sudo su postgres -c 'createdb -E UTF8 template_postgis'")
+            with settings(warn_only=True):
+                run("sudo su postgres -c 'createlang -d template_postgis plpgsql'")
+            run("sudo su postgres -c 'psql -d postgres -c \"UPDATE pg_database SET datistemplate='\\''true'\\'' WHERE datname='\\''template_postgis'\\'';\"'")
+            run("sudo su postgres -c 'psql -d template_postgis -f %s/postgis.sql'" % POSTGIS_SQL_PATH)
+            run("sudo su postgres -c 'psql -d template_postgis -f %s/spatial_ref_sys.sql'" % POSTGIS_SQL_PATH)
+            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geometry_columns TO PUBLIC;\"'")
+            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geography_columns TO PUBLIC;\"'")
+            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON spatial_ref_sys TO PUBLIC;\"'")     
+
+
+    def run(self):
+        self.install_package()
+        self.setup_postgis_template()
+
+
 setup = PostgresInstall()
 slave_setup = SlaveSetup()
 setup_pgbouncer = PGBouncerInstall()
 setup_backup = base_postgres.Backups()
+setup_postgis = PostGISInstall()
