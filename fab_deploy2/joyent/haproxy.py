@@ -20,7 +20,8 @@ class Haproxy(base_haproxy.Haproxy):
             sudo("useradd -g haproxy -s /usr/bin/false haproxy")
 
     def _setup_logging(self):
-        sudo('pkg_add rsyslog')
+        with settings(warn_only=True):
+            sudo('pkg_add rsyslog')
         sudo('svcadm disable system/system-log')
 
         update_conf = False
@@ -37,7 +38,7 @@ class Haproxy(base_haproxy.Haproxy):
                 "local1.* -{0}".format(self.logfile),
                 "& ~"
             ]
-            start = int(run('grep -n "ModLoad imfile" /opt/local/etc/rsyslog.conf | cut -f1 -d:'))
+            start = int(run('grep -n "ModLoad imsolaris" /opt/local/etc/rsyslog.conf | cut -f1 -d:'))
 
             for line in lines:
                 start = start + 1
