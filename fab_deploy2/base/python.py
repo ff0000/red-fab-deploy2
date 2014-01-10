@@ -57,7 +57,7 @@ class Python(MultiContextTask):
             sudo('mkdir -p {0}'.format(self.location))
             sudo('chown {0} {1}'.format(env.user, self.location))
 
-            sudo('pip install virtualenv')
+            sudo('pip install virtualenv==1.10.1')
             run('virtualenv --system-site-packages {0}'.format(
                         os.path.join(self.location)))
 
