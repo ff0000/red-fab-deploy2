@@ -14,7 +14,8 @@ def get_ip(interface, hosts=[]):
     """
     # for amazon we don't ips since they may change
     if not interface:
-        return run('curl -s http://169.254.169.254/latest/meta-data/public-hostname')
+        return run(
+            'curl -s http://169.254.169.254/latest/meta-data/local-ipv4')
 
     return run(get_ip_command(interface))
 
