@@ -4,7 +4,7 @@ from fab_deploy2.base import gunicorn as base_gunicorn
 from fab_deploy2.tasks import task_method
 from fab_deploy2 import functions
 
-from fabric.api import sudo, env
+from fabric.api import sudo, env, settings
 from fabric.contrib.files import append
 
 
@@ -16,23 +16,26 @@ class Gunicorn(base_gunicorn.Gunicorn):
     user = 'nginx'
     group = 'nginx'
     daemonize = False
+    upstart_name = 'upstart_gunicorn'
 
     @task_method
     def start(self):
+        name = self.upstart_name
         with settings(warn_only=True):
-            result = sudo('start %s' % self.get_name())
-
-        if result.failed:
-            self.restart()
+            result = sudo('initctl status {0}'.format(name))
+            if result.return_code == 0:
+                sudo('initctl restart {0}'.format(name))
+            else:
+                sudo('initctl start {0}'.format(name))
 
     @task_method
     def stop(self):
-        sudo('stop %s' % self.get_name())
+        sudo('initctl stop {0}' % self.upstart_name)
 
     def _setup_service(self, env_value=None):
         gunicorn_conf = os.path.join(env.configs_path,
-            "gunicorn/redhat_{0}.conf".format(
-                self.gunicorn_name))
+            "gunicorn/{0}.conf".format(
+                self.upstart_name))
         # Copy instead of linking so upstart
         # picks up the changes
         sudo('cp %s /etc/init/' % gunicorn_conf)
@@ -40,10 +43,10 @@ class Gunicorn(base_gunicorn.Gunicorn):
 
     def upload_templates(self):
         context = super(Gunicorn, self).upload_templates()
-        functions.render_template("gunicorn/supervisor_gunicorn.conf",
+        functions.render_template("gunicorn/upstart_gunicorn.conf",
                         os.path.join(
-                            env.configs_path, "gunicorn/redhat_{0}.conf".format(
-                                self.gunicorn_name)),
+                            env.configs_path, "gunicorn/{0}.conf".format(
+                                self.upstart_name)),
                         context=context)
 
         return context
