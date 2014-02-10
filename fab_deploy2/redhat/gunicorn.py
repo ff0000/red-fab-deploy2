@@ -31,7 +31,7 @@ class Gunicorn(base_gunicorn.Gunicorn):
 
     def _setup_service(self, env_value=None):
         gunicorn_conf = os.path.join(env.configs_path,
-            "gunicorn/supervisor_{0}.conf".format(
+            "gunicorn/redhat_{0}.conf".format(
                 self.gunicorn_name))
         # Copy instead of linking so upstart
         # picks up the changes
@@ -40,6 +40,11 @@ class Gunicorn(base_gunicorn.Gunicorn):
 
     def upload_templates(self):
         context = super(Gunicorn, self).upload_templates()
+        functions.render_template("gunicorn/supervisor_gunicorn.conf",
+                        os.path.join(
+                            env.configs_path, "gunicorn/redhat_{0}.conf".format(
+                                self.gunicorn_name)),
+                        context=context)
 
         return context
 
