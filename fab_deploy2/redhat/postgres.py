@@ -4,6 +4,7 @@ import tempfile
 from fabric.api import run, sudo, env, local, hide
 from fabric.operations import put
 from fabric.tasks import Task
+from fabric.contrib.files import exists
 
 from fab_deploy2.base import postgres as base_postgres
 
