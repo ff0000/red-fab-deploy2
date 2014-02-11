@@ -13,9 +13,17 @@ def get_ip(interface, hosts=[]):
     and OS.
     """
     # for amazon we don't ips since they may change
+    # NOTE: on VPC's, public-hostname returns 404, so
+    # we will use local-ipv4 instead
     if not interface:
-        return run(
-            'curl -s http://169.254.169.254/latest/meta-data/local-ipv4')
+        resp = run(
+            'curl -s -o /dev/null -w "%{http_code}" http://169.254.169.254/latest/meta-data/public-hostname')
+        if resp == '404':
+            return run(
+                'curl -s http://169.254.169.254/latest/meta-data/local-ipv4')
+        else:
+            return run(
+                'curl -s http://169.254.169.254/latest/meta-data/public-hostname')
 
     return run(get_ip_command(interface))
 
