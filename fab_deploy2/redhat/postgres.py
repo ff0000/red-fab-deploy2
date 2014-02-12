@@ -19,6 +19,7 @@ class RHMixin(object):
         return data_dir
 
     def _install_package(self, db_version):
+        sudo("rpm -U --replacepkgs http://yum.postgresql.org/9.1/redhat/rhel-6-x86_64/pgdg-redhat91-9.1-5.noarch.rpm")
         pk_version = db_version.replace('.', '')
         sudo("yum -y install postgresql%s-server" % pk_version)
         sudo("yum -y install postgresql%s-contrib" % pk_version)
