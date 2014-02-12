@@ -22,10 +22,10 @@ class Gunicorn(base_gunicorn.Gunicorn):
     def start(self):
         name = self.upstart_name
         with settings(warn_only=True):
-            result = sudo('initctl status {0}'.format(name))
-            if result.return_code == 0:
-                sudo('initctl restart {0}'.format(name))
-            else:
+            # initctl status does not return logical
+            # exit code so just restart or start instead
+            result = sudo('initctl restart {0}'.format(name))
+            if result.return_code != 0:
                 sudo('initctl start {0}'.format(name))
 
     @task_method
