@@ -43,11 +43,12 @@ class Gunicorn(base_gunicorn.Gunicorn):
 
     def upload_templates(self):
         context = super(Gunicorn, self).upload_templates()
-        functions.render_template("gunicorn/upstart_gunicorn.conf",
-                        os.path.join(
-                            env.configs_path, "gunicorn/{0}.conf".format(
-                                self.upstart_name)),
-                        context=context)
+        functions.render_template(
+            "gunicorn/{0}.conf".format(self.upstart_name),
+            os.path.join(
+                env.configs_path,
+                "gunicorn/{0}.conf".format(self.upstart_name)),
+            context=context)
 
         return context
 
