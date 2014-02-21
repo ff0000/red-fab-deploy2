@@ -60,10 +60,11 @@ class DeployCode(Task):
 
         code_static_dir = os.path.join(code_dir, 'collected-static')
 
-        local('rsync -rptov --checksum --progress --delete-after {0}/ {1}:/srv/updating'.format(env.build_dir, env.host_string, code_dir))
+        local('rsync -rptov --checksum --progress --delete-after {0}/ {1}:{2}updating'.format(
+            env.build_dir, env.host_string, env.base_remote_path))
 
         run('mkdir -p {0}'.format(code_dir))
-        run('cp -r /srv/updating/* {0}/'.format(code_dir))
+        run('cp -r {0}updating/* {1}/'.format(env.base_remote_path, code_dir))
         run('rsync -rptov --checksum  --delete-after --filter "P {0}*" "{1}/" "{2}"'.format(self.cache_prefix, code_static_dir, static_dir))
         run('ln -sfn {0} {1}/c-{2}'.format(code_static_dir, static_dir, static_hash))
 
