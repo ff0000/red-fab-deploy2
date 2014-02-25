@@ -1,5 +1,3 @@
-import os
-
 from fabric.api import sudo, env
 from fabric.contrib.files import append
 
@@ -21,30 +19,8 @@ class Nginx(base_nginx.Nginx):
         sudo("yum -y install nginx")
 
     def _setup_logging(self):
-        path = os.path.dirname(os.path.realpath(self.access_log))
-        sudo('mkdir -p %s' % path)
-        sudo('chown -R %s:%s %s' % (self.user, self.group, path))
-        sudo('chmod 666 %s' % path)
-        self._setup_rotate(path)
-        return path
-
-    def _setup_rotate(self, path):
-        text = [
-        "%s/*.log {" % path,
-        "   daily",
-        "   missingok",
-        "   rotate 52",
-        "   compress",
-        "   delaycompress",
-        "   notifempty",
-        "   create 640 nginx adm",
-        "   sharedscripts",
-        "   postrotate",
-        "        [ -f /var/run/nginx.pid ] && kill -USR1 `cat /var/run/nginx.pid`",
-        "   endscript",
-        "}"]
-        sudo('touch /etc/logrotate.d/nginx')
-        append('/etc/logrotate.d/nginx', text, use_sudo=True)
+        # Done by package
+        pass
 
     @task_method
     def start(self):

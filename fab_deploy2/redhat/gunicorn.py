@@ -48,7 +48,7 @@ class Gunicorn(base_gunicorn.Gunicorn):
             os.path.join(
                 env.configs_path,
                 "gunicorn/{0}.conf".format(self.upstart_name)),
-            context=context)
+            context=self.get_template_context())
 
         return context
 
@@ -60,7 +60,8 @@ class Gunicorn(base_gunicorn.Gunicorn):
         "    rotate 5",
         "}"]
         sudo('touch /etc/logrotate.d/%s.conf' % self.gunicorn_name)
-        append('/etc/logrotate.d/%s.conf' % self.gunicorn_name,
-                                    text, use_sudo=True)
+        for t in text:
+            append('/etc/logrotate.d/%s.conf' % self.gunicorn_name,
+                                        text, use_sudo=True)
 
 Gunicorn().as_tasks()
