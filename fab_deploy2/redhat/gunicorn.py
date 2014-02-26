@@ -62,6 +62,6 @@ class Gunicorn(base_gunicorn.Gunicorn):
         sudo('touch /etc/logrotate.d/%s.conf' % self.gunicorn_name)
         for t in text:
             append('/etc/logrotate.d/%s.conf' % self.gunicorn_name,
-                                        text, use_sudo=True)
+                                        t, use_sudo=True)
 
 Gunicorn().as_tasks()
