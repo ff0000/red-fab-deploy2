@@ -66,6 +66,7 @@ class New(Task):
 
         setup_name = 'servers.%s.setup' % kwargs.get('type')
         config_name = 'servers.%s.api_config' % kwargs.get('type')
+        user = kwargs.get('user', 'admin')
 
         task = functions.get_task_instance(setup_name)
 
@@ -131,7 +132,7 @@ class New(Task):
 
         public_ip = machine.public_ips[0]
         print "added machine %s" % public_ip
-        host_string = 'admin@%s' % public_ip
+        host_string = '%s@%s' % (user, public_ip)
         print 'done'
 
         execute(setup_name, hosts=[host_string])
