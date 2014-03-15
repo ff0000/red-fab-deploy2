@@ -47,6 +47,8 @@ class PostgresInstall(Task):
     data_dir_default_base = '/var/pgsql'
     binary_path = None
     version_directory_join = '.'
+    cron_file = '/etc/crontab'
+    keep_wals = 3
 
     def _get_config_dir(self, db_version, data_dir):
         return data_dir
@@ -106,7 +108,10 @@ class PostgresInstall(Task):
         archive_dir = os.path.join(data_dir, 'wal_archive')
         sudo("mkdir -p %s" % archive_dir)
         sudo("chown postgres:postgres %s" % archive_dir)
-
+        append('{0}'.format(self.cron_file),
+               '0 4 * * * find {0}* -type f -mtime +{1} -delete'.format(
+                                    archive_dir, self.keep_wals),
+               use_sudo=True)
         return archive_dir
 
     def _setup_ssh_key(self):

@@ -51,6 +51,7 @@ class PostgresInstall(JoyentMixin, base_postgres.PostgresInstall):
 
     name = 'master_setup'
     db_version = '9.1'
+    cron_file = '/var/spool/cron/crontabs/root'
 
 class SlaveSetup(JoyentMixin, base_postgres.SlaveSetup):
     """
@@ -58,7 +59,7 @@ class SlaveSetup(JoyentMixin, base_postgres.SlaveSetup):
     """
 
     name = 'slave_setup'
-
+    cron_file = '/var/spool/cron/crontabs/root'
 
 class PGBouncerInstall(Task):
     """
@@ -179,7 +180,7 @@ class PostGISInstall(Task):
             run("sudo su postgres -c 'psql -d template_postgis -f %s/spatial_ref_sys.sql'" % POSTGIS_SQL_PATH)
             run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geometry_columns TO PUBLIC;\"'")
             run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON geography_columns TO PUBLIC;\"'")
-            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON spatial_ref_sys TO PUBLIC;\"'")     
+            run("sudo su postgres -c 'psql -d template_postgis -c \"GRANT ALL ON spatial_ref_sys TO PUBLIC;\"'")
 
 
     def run(self):
