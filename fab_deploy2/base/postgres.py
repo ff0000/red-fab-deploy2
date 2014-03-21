@@ -41,6 +41,7 @@ class PostgresInstall(Task):
         'listen_addresses':  "'*'",
         'wal_level':         "hot_standby",
         'wal_keep_segments': "32",
+        'archive_timeout':   "130200",
         'max_wal_senders':   "5",
         'archive_mode':      "on" }
 
@@ -104,14 +105,17 @@ class PostgresInstall(Task):
                    'installed and data dir was created correctly.' %postgres_conf)
             sys.exit(1)
 
+    def _setup_wal_cron(self, wal_dir):
+        append('{0}'.format(self.cron_file),
+               '0 4 * * * find {0}* -type f -mtime +{1} -delete'.format(
+                                    wal_dir, self.keep_wals),
+               use_sudo=True)
+
     def _setup_archive_dir(self, data_dir):
         archive_dir = os.path.join(data_dir, 'wal_archive')
         sudo("mkdir -p %s" % archive_dir)
         sudo("chown postgres:postgres %s" % archive_dir)
-        append('{0}'.format(self.cron_file),
-               '0 4 * * * find {0}* -type f -mtime +{1} -delete'.format(
-                                    archive_dir, self.keep_wals),
-               use_sudo=True)
+        self._setup_wal_cron(archive_dir)
         return archive_dir
 
     def _setup_ssh_key(self):

@@ -16,6 +16,15 @@ from fab_deploy2.base import postgres as base_postgres
 class JoyentMixin(object):
     version_directory_join = ''
 
+    def _setup_wal_cron(self, wal_dir):
+        sudo('cp {0} /tmp/tmp-cron'.format(self.cron_file))
+        append('{0}'.format('/tmp/tmp-cron'),
+               '0 4 * * * find {0}* -type f -mtime +{1} -delete'.format(
+                                    wal_dir, self.keep_wals),
+               use_sudo=True)
+        sudo('crontab /tmp/tmp-cron')
+        sudo('rm /tmp/tmp-cron')
+
     def _get_data_dir(self, db_version):
         # Try to get from svc first
         output = run('svcprop -p config/data postgresql')
