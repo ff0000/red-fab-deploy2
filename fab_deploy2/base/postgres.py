@@ -107,7 +107,7 @@ class PostgresInstall(Task):
 
     def _setup_wal_cron(self, wal_dir):
         append('{0}'.format(self.cron_file),
-               '0 4 * * * find {0}* -type f -mtime +{1} -delete'.format(
+               '0 4 * * * root find {0}* -type f -mtime +{1} -delete'.format(
                                     wal_dir, self.keep_wals),
                use_sudo=True)
 
