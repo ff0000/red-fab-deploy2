@@ -43,12 +43,13 @@ for dirpath, dirnames, filenames in os.walk(os.path.join(base_path, 'default-con
 setup(
     name = 'red-fab-deploy2',
     packages=[
-		'fab_deploy2',
-		'fab_deploy2.base',
-		'fab_deploy2.joyent',
+        'fab_deploy2',
+        'fab_deploy2.base',
+        'fab_deploy2.joyent',
         'fab_deploy2.ubuntu',
         'fab_deploy2.amazon',
-		'fab_deploy2.local',
+        'fab_deploy2.redhat',
+        'fab_deploy2.local',
 		],
 	version = '0.2.0',
     author='RED Interactive Agency',
