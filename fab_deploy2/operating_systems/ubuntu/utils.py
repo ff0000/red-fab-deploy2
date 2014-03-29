@@ -4,6 +4,21 @@ from fabric.api import task, run, env, sudo
 from fabric.context_managers import settings
 
 @task
+def get_ip(interface, hosts=[]):
+    """
+    get IP address
+    """
+    return run(get_ip_command(interface))
+
+def get_ip_command(interface):
+    """
+    get IP address
+    """
+    if not interface:
+        interface = 'eth0'
+    return 'ifconfig %s | grep Bcast | cut -d ":" -f 2 | cut -d " " -f 1' % interface
+
+@task
 def start_or_restart_supervisor(name, hosts=[]):
     """
     """

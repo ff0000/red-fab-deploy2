@@ -2,7 +2,6 @@ from fabric.api import sudo
 
 from fab_deploy2.base import servers as base_servers
 
-
 class RHMixin(object):
     serial = True
     setup_firewall = False
@@ -24,9 +23,8 @@ class AppMixin(RHMixin):
 
 class AppServer(AppMixin, base_servers.AppServer):
 
-    def _modify_others(self):
-        pass
-
+    def get_context(self):
+        assert False
 
 class DBServer(RHMixin, base_servers.DBServer):
     pass

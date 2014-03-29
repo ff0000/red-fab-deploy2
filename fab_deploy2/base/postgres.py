@@ -270,6 +270,7 @@ class SlaveSetup(PostgresInstall):
                     %(pg_archive, wal_dir, "%r")))
 
         sudo('touch %s' % recovery_conf)
+        sudo('echo "" > %s' % recovery_conf)
         append(recovery_conf, txts, use_sudo=True)
         sudo('chown postgres:postgres %s' %recovery_conf)
 

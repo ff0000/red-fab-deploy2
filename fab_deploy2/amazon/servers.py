@@ -1,17 +1,21 @@
 import sys
+import importlib
 from fabric.api import env
 from fabric.tasks import Task
 
 from fab_deploy2 import functions
 from fab_deploy2.base import servers as base_servers
-from fab_deploy2.ubuntu.servers import *
+from fab_deploy2.tasks import task_method
 
 from api import get_ec2_connection
 
-
-class AppServer(AppServer):
+class AmazonAppServerMixin(object):
     def get_context(self):
-        return base_servers.BaseServer.get_context(self)
+        context = base_servers.BaseServer.get_context(self)
+        default = {
+            'nginx' : { 'lbs' : ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'] }
+        }
+        return functions.merge_context(context, default)
 
 class LBServer(base_servers.LBServer):
     """
@@ -46,39 +50,24 @@ class LBServer(base_servers.LBServer):
 
     listeners =  [(80, 80, 'http',)]
 
-    def get_instance_id_by_ip(self, ip, **kwargs):
-        """
-        get ec2 instance id based on ip address
-        """
-        instances = []
-        conn = get_ec2_connection(server_type='ec2', **kwargs)
-        reservations = conn.get_all_instances()
-        for resv in reservations:
-            for instance in resv.instances:
-                if instance.ip_address == ip or instance.public_dns_name == ip:
-                    instances.append(instance.id)
-        return instances
+    def get_context(self):
+        default = {
+            'hc_policy' : self.hc_policy,
+            'listeners' : self.listeners,
+            'lb_name' : env.project_name
+        }
+        context = env.context.get(self.config_section, {})
+        return functions.merge_context(context, default)
 
-    def _get_elb(self, conn, lb_name):
-        lbs = conn.get_all_load_balancers()
-        for lb in lbs:
-            if lb.name == lb_name:
-                return lb
-        return None
-
-    def run(self, section, **kwargs):
+    def _update_server(self, **kwargs):
         conn = get_ec2_connection(server_type='ec2', **kwargs)
         elb_conn = get_ec2_connection(server_type='elb', **kwargs)
 
         zones = [ z.name for z in conn.get_all_zones()]
+        context = self.get_context()
 
-        lb_name = env.get('lb_name')
-        if not lb_name:
-            lb_name = env.project_name
-
-        listeners = env.get('listeners')
-        if not listeners:
-            listeners = self.listeners
+        lb_name = context.get('lb_name')
+        listeners = context.get('listeners')
 
         connections = env.config_object.get_list(section,
                                                  env.config_object.CONNECTIONS)
@@ -100,7 +89,7 @@ class LBServer(base_servers.LBServer):
         print "register instances into load balancer"
         print instances
 
-        hc_policy = env.get('hc_policy')
+        hc_policy = context.get('hc_policy')
         if not hc_policy:
             hc_policy = self.hc_policy
         print "Configure load balancer health check policy"
@@ -108,9 +97,34 @@ class LBServer(base_servers.LBServer):
         hc = HealthCheck(**hc_policy)
         elb.configure_health_check(hc)
 
+    @task_method
+    def setup(self, **kwargs):
+        self._update_server(**kwargs)
 
-AppServer().as_tasks(name="app_server")
-LBServer().as_tasks(name="lb_server")
-DBServer().as_tasks(name="db_server")
-DBSlaveServer().as_tasks(name="slave_server")
-DevServer().as_tasks(name="dev_server")
+    @task_method
+    def update(self, **kwargs):
+        self._update_server(**kwargs)
+
+    @task_method
+    def restart_services(self):
+        pass
+
+    def get_instance_id_by_ip(self, ip, **kwargs):
+        """
+        get ec2 instance id based on ip address
+        """
+        instances = []
+        conn = get_ec2_connection(server_type='ec2', **kwargs)
+        reservations = conn.get_all_instances()
+        for resv in reservations:
+            for instance in resv.instances:
+                if instance.ip_address == ip or instance.public_dns_name == ip:
+                    instances.append(instance.id)
+        return instances
+
+    def _get_elb(self, conn, lb_name):
+        lbs = conn.get_all_load_balancers()
+        for lb in lbs:
+            if lb.name == lb_name:
+                return lb
+        return None
