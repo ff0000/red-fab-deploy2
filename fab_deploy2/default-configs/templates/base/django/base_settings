@@ -1,5 +1,19 @@
 {% block basic %}
 MEDIA_ROOT = '{{ nginx.uploads_location }}/'
+
+{% if nginx.hosts %}
+ALLOWED_HOSTS = [
+    {% for h in nginx.hosts %}
+        {% if h.startswith('*.') %}
+        '{{ h[1:] }}', '{{ h[1:] }}.',
+        {% else %}
+        '{{ h }}', '{{ h }}.',
+        {% endif %}
+    {% endfor %}
+]
+{% else %}
+ALLOWED_HOSTS = ['*']
+{% endif %}
 {% endblock %}
 
 {% block logging %}
