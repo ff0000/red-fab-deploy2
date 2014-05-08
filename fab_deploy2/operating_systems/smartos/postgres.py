@@ -77,7 +77,7 @@ class PGBouncerInstall(Task):
 
     name = 'setup_pgbouncer'
 
-    config_dir = '/etc/opt/pkg'
+    config_dir = '/opt/local/etc'
     pkg_name = 'pgbouncer'
 
     config = {
@@ -104,9 +104,7 @@ class PGBouncerInstall(Task):
 
     def _get_passwd(self, username):
         with hide('output'):
-            string = run('echo "select usename, passwd from pg_shadow where '
-                         'usename=\'%s\' order by 1" | sudo su postgres -c '
-                         '"psql"' %username)
+            string = run('echo "select usename, passwd from pg_shadow where usename=\'%s\' order by 1" | sudo su postgres -c "psql"' %username)
 
         user, passwd = string.split('\n')[2].split('|')
         user = user.strip()
@@ -142,16 +140,19 @@ class PGBouncerInstall(Task):
         home = run('bash -c "echo ~postgres"')
         bounce_home = os.path.join(home, 'pgbouncer')
 
+        ini_file = '%s/pgbouncer.ini' %self.config_dir
+        userlist_file = '%s/pgbouncer.userlist'%self.config_dir
+
         pidfile = os.path.join(bounce_home, 'pgbouncer.pid')
-        self._setup_parameter('%s/pgbouncer.ini' %self.config_dir,
-                              pidfile=pidfile, **self.config)
+        self._setup_parameter(ini_file, pidfile=pidfile, **self.config)
 
         if not section:
             section = 'db-server'
         username = self._get_username(section)
         self._get_passwd(username)
         # postgres should be the owner of these config files
-        sudo('chown -R postgres:postgres %s' %self.config_dir)
+        sudo('chown postgres:postgres %s' % ini_file)
+        sudo('chown postgres:postgres %s' % userlist_file)
 
         sudo('mkdir -p %s' % bounce_home)
         sudo('chown postgres:postgres %s' % bounce_home)
