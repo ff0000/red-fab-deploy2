@@ -357,3 +357,66 @@ class Backups(Task):
         bash = run('which bash')
         append('/tmp/pg_cron','0 0 * * *         %s %s' % (bash, online_path))
         run('sudo su postgres -c "crontab < /tmp/pg_cron"')
+
+
+
+class PromoteSlave(PostgresInstall):
+    """
+    Promotes chosen slave to master
+    """
+    name = 'promote_slave'
+
+
+    def run(self, slave_host_string=None, slave_internal_ip=None, db_version=None, **kwargs):
+        env.host_string = slave_host_string
+        run('touch /tmp/pg_failover_trigger')
+
+        db_version = self._get_db_version(db_version)
+        data_dir = self._get_data_dir(db_version)
+        config_dir = self._get_config_dir(db_version, data_dir)
+
+        config = dict(self.postgres_config)
+        self._setup_postgres_config(config_dir, config)
+
+        added = False
+        if env.config_object.has_section('db-server') and \
+            env.config_object.has_section('slave-db') and \
+            slave_host_string in env.config_object.get_list('slave-db', env.config_object.CONNECTIONS) and \
+            slave_internal_ip in env.config_object.get_list('slave-db', env.config_object.INTERNAL_IPS):
+
+                master_host_strings = env.config_object.get_list('db-server', env.config_object.CONNECTIONS)
+                master_host_strings.append(slave_host_string)
+                env.config_object.set_list('db-server',
+                    env.config_object.CONNECTIONS,
+                    master_host_strings)
+
+                env.roledefs['db-server'].append(slave_host_string)
+                env.host_roles[slave_host_string] = 'db-server'
+
+
+                master_internal_ips = env.config_object.get_list('db-server', env.config_object.INTERNAL_IPS)
+                master_internal_ips.append(slave_internal_ip)
+                env.config_object.set_list('db-server',
+                    env.config_object.INTERNAL_IPS,
+                    master_internal_ips)
+
+                slave_host_strings = env.config_object.get_list('slave-db', env.config_object.CONNECTIONS)
+                slave_host_strings.remove(slave_host_string)
+                env.config_object.set_list('slave-db',
+                    env.config_object.CONNECTIONS,
+                    slave_host_strings)
+
+                env.roledefs['slave-db'].remove(slave_host_string)
+
+                slave_internal_ips = env.config_object.get_list('slave-db', env.config_object.INTERNAL_IPS)
+                slave_internal_ips.remove(slave_internal_ip)
+                env.config_object.set_list('slave-db',
+                    env.config_object.INTERNAL_IPS,
+                    slave_internal_ips)
+
+                env.config_object.save(env.conf_filename)
+
+                added = True
+        return added
+
+
