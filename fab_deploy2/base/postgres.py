@@ -367,16 +367,18 @@ class PromoteSlave(PostgresInstall):
     name = 'promote_slave'
 
 
-    def run(self, slave_host_string=None, slave_internal_ip=None, db_version=None, **kwargs):
+    def run(self, slave_host_string=None, slave_internal_ip=None,
+                    master_host_string=None, master_internal_ip=None,
+                    db_version=None, **kwargs):
         env.host_string = slave_host_string
-        run('touch /tmp/pg_failover_trigger')
+        # run('touch /tmp/pg_failover_trigger')
 
-        db_version = self._get_db_version(db_version)
-        data_dir = self._get_data_dir(db_version)
-        config_dir = self._get_config_dir(db_version, data_dir)
+        # db_version = self._get_db_version(db_version)
+        # data_dir = self._get_data_dir(db_version)
+        # config_dir = self._get_config_dir(db_version, data_dir)
 
-        config = dict(self.postgres_config)
-        self._setup_postgres_config(config_dir, config)
+        # config = dict(self.postgres_config)
+        # self._setup_postgres_config(config_dir, config)
 
         added = False
         if env.config_object.has_section('db-server') and \
@@ -384,6 +386,7 @@ class PromoteSlave(PostgresInstall):
             slave_host_string in env.config_object.get_list('slave-db', env.config_object.CONNECTIONS) and \
             slave_internal_ip in env.config_object.get_list('slave-db', env.config_object.INTERNAL_IPS):
 
+                #Add slave hoststring to master list
                 master_host_strings = env.config_object.get_list('db-server', env.config_object.CONNECTIONS)
                 master_host_strings.append(slave_host_string)
                 env.config_object.set_list('db-server',
@@ -393,13 +396,14 @@ class PromoteSlave(PostgresInstall):
                 env.roledefs['db-server'].append(slave_host_string)
                 env.host_roles[slave_host_string] = 'db-server'
 
-
+                #Add slave internal IP to master list
                 master_internal_ips = env.config_object.get_list('db-server', env.config_object.INTERNAL_IPS)
                 master_internal_ips.append(slave_internal_ip)
                 env.config_object.set_list('db-server',
                     env.config_object.INTERNAL_IPS,
                     master_internal_ips)
 
+                #Remove slave hoststring from slave list
                 slave_host_strings = env.config_object.get_list('slave-db', env.config_object.CONNECTIONS)
                 slave_host_strings.remove(slave_host_string)
                 env.config_object.set_list('slave-db',
@@ -408,11 +412,43 @@ class PromoteSlave(PostgresInstall):
 
                 env.roledefs['slave-db'].remove(slave_host_string)
 
+                #Remove slave internal ip from slave list
                 slave_internal_ips = env.config_object.get_list('slave-db', env.config_object.INTERNAL_IPS)
                 slave_internal_ips.remove(slave_internal_ip)
                 env.config_object.set_list('slave-db',
                     env.config_object.INTERNAL_IPS,
                     slave_internal_ips)
+
+        if master_host_string and \
+            master_host_string in env.config_object.get_list('db-server', env.config_object.CONNECTIONS) and \
+            master_internal_ip in env.config_object.get_list('db-server', env.config_object.INTERNAL_IPS):
+
+                #Move master hoststring to defunct masters list
+                master_host_strings = env.config_object.get_list('db-server', env.config_object.CONNECTIONS)
+                master_host_strings.remove(master_host_string)
+
+                if not env.config_object.has_section('defunct-master'):
+                    env.config_object.add_section('defunct-master')
+
+                env.config_object.set_list('defunct-master',
+                    env.config_object.CONNECTIONS,
+                    [master_host_string,])
+
+                env.config_object.set_list('db-server',
+                    env.config_object.CONNECTIONS,
+                    master_host_strings)
+
+                #Move master internal ip to defunt masters list
+                master_internal_ips = env.config_object.get_list('db-server', env.config_object.INTERNAL_IPS)
+                master_internal_ips.remove(master_internal_ip)
+
+                env.config_object.set_list('defunct-master',
+                    env.config_object.INTERNAL_IPS,
+                    [master_internal_ip,])
+
+                env.config_object.set_list('db-server',
+                    env.config_object.INTERNAL_IPS,
+                    master_internal_ips)
 
                 env.config_object.save(env.conf_filename)
 
