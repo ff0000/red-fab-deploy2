@@ -30,7 +30,7 @@ class Gunicorn(base_gunicorn.Gunicorn):
 
     @task_method
     def stop(self):
-        sudo('initctl stop {0}' % self.upstart_name)
+        sudo('initctl stop {0}'.format(self.upstart_name))
 
     def _setup_service(self, env_value=None):
         gunicorn_conf = os.path.join(env.configs_path,
