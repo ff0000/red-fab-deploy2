@@ -9,6 +9,8 @@ from fab_deploy2.tasks import task_method
 
 from api import get_ec2_connection
 
+from boto.ec2.elb.healthcheck import HealthCheck
+
 class AmazonAppServerMixin(object):
     def get_context(self):
         context = base_servers.BaseServer.get_context(self)
@@ -46,7 +48,7 @@ class LBServer(base_servers.LBServer):
 
     hc_policy = {
                 'interval': 30,
-                'target':   'HTTP:80/index.html', }
+                'target':   'HTTP:80/', }
 
     listeners =  [(80, 80, 'http',)]
 
@@ -69,7 +71,7 @@ class LBServer(base_servers.LBServer):
         lb_name = context.get('lb_name')
         listeners = context.get('listeners')
 
-        connections = env.config_object.get_list(section,
+        connections = env.config_object.get_list('app-server',
                                                  env.config_object.CONNECTIONS)
         ips = [ ip.split('@')[-1] for ip in connections]
         for ip in ips:
@@ -81,8 +83,7 @@ class LBServer(base_servers.LBServer):
         elb = self._get_elb(elb_conn, lb_name)
         print "find load balancer %s" %lb_name
         if not elb:
-            elb = elb_conn.create_load_balancer(lb_name, zones, listeners,
-                                                security_groups=['lb_sg'])
+            elb = elb_conn.create_load_balancer(lb_name, zones, listeners)
             print "load balancer %s successfully created" %lb_name
 
         elb.register_instances(instances)
@@ -93,7 +94,6 @@ class LBServer(base_servers.LBServer):
         if not hc_policy:
             hc_policy = self.hc_policy
         print "Configure load balancer health check policy"
-        print hc
         hc = HealthCheck(**hc_policy)
         elb.configure_health_check(hc)
 
