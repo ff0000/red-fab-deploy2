@@ -26,10 +26,8 @@ class Gunicorn(base_gunicorn.Gunicorn):
 
     def _setup_service(self, env_value=None):
         sudo('apt-get -y install supervisor')
-        conf_file = '/etc/supervisor/supervisord.conf'
         gunicorn_conf = os.path.join(env.configs_path, "gunicorn/supervisor_{0}.conf".format(self.gunicorn_name))
-        text = 'files = %s' % gunicorn_conf
-        append(conf_file, text, use_sudo=True)
+        sudo('ln -sf {0} /etc/supervisor/conf.d/'.format(gunicorn_conf))
 
     def upload_templates(self):
         context = super(Gunicorn, self).upload_templates()
@@ -49,5 +47,5 @@ class Gunicorn(base_gunicorn.Gunicorn):
         for t in text:
             append('/etc/logrotate.d/%s.conf' % self.gunicorn_name,
                                         t, use_sudo=True)
-            
+
 Gunicorn().as_tasks()
