@@ -405,14 +405,17 @@ class Postgresql(ServiceContextTask):
             pub_key = sudo('cat %s' %rsa_pub)
             slave_addr = slave.split('@')[1]
             sudo('ssh-keyscan -H {0} >> {1}'.format(slave_addr, known))
+            sudo('chown {0}:{1} {2}'.format(self.user, self.group, known))
 
         with settings(host_string=slave):
             authorized_keys = os.path.join(ssh_dir, 'authorized_keys')
             if not exists(authorized_keys):
                 sudo('touch {0}'.format(authorized_keys))
-                sudo('chown {0}:{1} {2}'.format(self.user, self.group, authorized_keys))
+
+            sudo('chown {0}:{1} {2}'.format(self.user, self.group, authorized_keys))
 
             append(authorized_keys, pub_key, use_sudo=True)
             results = execute('utils.get_ip', None, hosts=[master])
             master_ip = results[master]
             sudo('ssh-keyscan -H {0} >> {1}'.format(master_ip, known))
+            sudo('chown {0}:{1} {2}'.format(self.user, self.group, known))
