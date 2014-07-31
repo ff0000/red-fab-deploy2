@@ -10,10 +10,21 @@ from fabric.context_managers import cd
 
 from fabric.tasks import Task
 
-from fab_deploy2.functions import random_password
 from fab_deploy2.base import postgres as base_postgres
+from fab_deploy2 import functions
 
-class JoyentMixin(object):
+class Postgresql(base_postgres.Postgresql):
+    """
+    Install postgresql on server
+
+    install postgresql package;
+    enable postgres access from localhost without password;
+    enable all other user access from other machines with password;
+    setup a few parameters related with streaming replication;
+    database server listen to all machines '*';
+    create a user for database with password.
+    """
+    cron_file = '/var/spool/cron/crontabs/root'
     version_directory_join = ''
 
     def _setup_wal_cron(self, wal_dir):
@@ -25,50 +36,25 @@ class JoyentMixin(object):
         sudo('crontab /tmp/tmp-cron')
         sudo('rm /tmp/tmp-cron')
 
-    def _get_data_dir(self, db_version):
+    def _get_data_dir(self):
         # Try to get from svc first
         output = run('svcprop -p config/data postgresql')
         if output.stdout and exists(output.stdout, use_sudo=True):
             return output.stdout
         return base_postgres.PostgresInstall._get_data_dir(self, db_version)
 
-    def _install_package(self, db_version):
-        sudo("pkg_add postgresql%s-server" %db_version)
-        sudo("pkg_add postgresql%s-replicationtools" %db_version)
+    def _install_package(self):
+        sudo("pkg_add postgresql%s-server" % self.db_version)
+        sudo("pkg_add postgresql%s-replicationtools" % self.db_version)
         sudo("svcadm enable postgresql")
 
-    def _restart_db_server(self, db_version):
-        sudo('svcadm restart postgresql')
-
-    def _stop_db_server(self, db_version):
+    def _stop_db_server(self):
         sudo('svcadm disable postgresql')
 
-    def _start_db_server(self, db_version):
-        sudo('svcadm enable postgresql')
-
-class PostgresInstall(JoyentMixin, base_postgres.PostgresInstall):
-    """
-    Install postgresql on server
-
-    install postgresql package;
-    enable postgres access from localhost without password;
-    enable all other user access from other machines with password;
-    setup a few parameters related with streaming replication;
-    database server listen to all machines '*';
-    create a user for database with password.
-    """
-
-    name = 'master_setup'
-    db_version = '9.3'
-    cron_file = '/var/spool/cron/crontabs/root'
-
-class SlaveSetup(JoyentMixin, base_postgres.SlaveSetup):
-    """
-    Set up master-slave streaming replication: slave node
-    """
-
-    name = 'slave_setup'
-    cron_file = '/var/spool/cron/crontabs/root'
+    def _start_db_server(self):
+        service = "postgresql"
+        task = "{0}.start_or_restart".format(self.utils)
+        functions.execute_on_host(task, service)
 
 class PGBouncerInstall(Task):
     """
@@ -175,8 +161,9 @@ class PostGISInstall(Task):
     name = 'setup_postgis'
 
     def install_package(self):
-        sudo("pkg_add postgresql91-postgis")
-
+        context = functions.execute_on_host('postgres.context')
+        version = context['version_directory_join'].join(context['version'].split('.')[:2])
+        sudo("pkg_add postgresql{0}-postgis".format(version))
 
     def setup_postgis_template(self):
         POSTGIS_SQL_PATH = "/opt/local/share/postgresql/contrib/postgis-1.5"
@@ -198,9 +185,6 @@ class PostGISInstall(Task):
         self.setup_postgis_template()
 
 
-setup = PostgresInstall()
-slave_setup = SlaveSetup()
+Postgresql().as_tasks()
 setup_pgbouncer = PGBouncerInstall()
-setup_backup = base_postgres.Backups()
-promote_slave = base_postgres.PromoteSlave()
 setup_postgis = PostGISInstall()

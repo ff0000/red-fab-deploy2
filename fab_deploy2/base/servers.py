@@ -334,9 +334,7 @@ class DBServer(BaseServer):
     config_section = 'db-server'
 
     def _setup_db(self):
-        dict = functions.execute_on_host('postgres.master_setup',
-                        section=self.config_section,
-                        save_config=True)
+        dict = functions.execute_on_host('postgres.master_setup')
 
     @task_method
     def setup(self):
@@ -350,6 +348,10 @@ class DBServer(BaseServer):
         self._save_config()
 
     @task_method
+    def update(self):
+        functions.execute_on_host('postgres.update')
+
+    @task_method
     def context(self):
         return self.get_context()
 
@@ -360,41 +362,98 @@ class DBSlaveServer(DBServer):
     """
     name = 'slave_db'
     config_section = 'slave-db'
-
-    def _get_master_options(self):
-        return env.config_object.get_list('db-server',
-                                          env.config_object.CONNECTIONS)
+    master_config_section = 'db-server'
 
     def _get_master(self):
-        cons = self._get_master_options()
-
-        n = len(cons)
-        if n == 0:
-            print ('I could not find db server in server.ini.'
-                   'Did you set up a master server?')
-            sys.exit(1)
-        elif n == 1:
-            master = cons[0]
-        else:
-            for i in range(1, n+1):
-                print "[%2d ]: %s" %(i, cons[i-1])
-            while True:
-                choice = raw_input('I found %d servers in server.ini.'
-                                   'Which one do you want to use as master? ' %n)
-                try:
-                    choice = int(choice)
-                    master = cons[choice-1]
-                    break
-                except:
-                    print "please input a number between 1 and %d" %n-1
-
-        return master
+        return functions.get_valid_host_from_conf(self.master_config_section)
 
     def _setup_db(self):
         master = self._get_master()
-        functions.execute_on_host('postgres.slave_setup', master=master,
-                                    section=self.config_section)
+        functions.execute_on_host('postgres.slave_setup', master=master)
 
+    def _do_promote(self, candidate):
+        execute('postgres.promote_slave', hosts=[candidate])
+
+    def _remove_pair(self, section, host_string):
+        if env.config_object.has_section(self.config_section):
+            cons = env.config_object.get_list(section,
+                                    env.config_object.CONNECTIONS)
+            internal_cons = env.config_object.get_list(section,
+                                    env.config_object.INTERNAL_IPS)
+
+            try:
+                i = cons.index(host_string)
+                old = cons[i]
+                old_internal = internal_cons[i]
+
+                del cons[i]
+                del internal_cons[i]
+
+                env.config_object.set_list(section,
+                                    env.config_object.CONNECTIONS,
+                                    cons)
+                env.config_object.set_list(section,
+                                    env.config_object.INTERNAL_IPS,
+                                    internal_cons)
+                return old, old_internal
+            except ValueError:
+                return None, None
+
+    @task_method
+    def update(self, master=None, full_sync=False):
+        if not master:
+            master = self._get_master()
+
+        functions.execute_on_host('postgres.update_slave',
+                            master=master, full_sync=full_sync)
+
+    @task_method
+    def promote(self, master=None):
+        if not master:
+            master = self._get_master()
+
+        if len(env.all_hosts) > 1 or len(env.all_hosts) < 1:
+            env.host_string = functions.get_valid_host_from_conf(self.config_section)
+
+        self._do_promote(env.host_string)
+        self._update_config(self.master_config_section)
+
+        # Reset internal lookups
+        env.roledefs[self.master_config_section].append(env.host_string)
+        env.host_roles[env.host_string] = self.master_config_section
+        if env.host_string in env.roledefs[self.config_section]:
+            env.roledefs[self.config_section].remove(env.host_string)
+
+        if master in env.host_roles:
+            del env.host_roles[master]
+
+        if master in env.roledefs[self.master_config_section]:
+            env.roledefs[self.master_config_section].remove(master)
+
+        # Remove new master from slaves
+        self._remove_pair(self.config_section, env.host_string)
+
+        # Remove old master from masters
+        old_master, old_master_internal = self._remove_pair(self.master_config_section, master)
+        if old_master and old_master_internal:
+            if not env.config_object.has_section('defunct-master'):
+                env.config_object.add_section('defunct-master')
+
+            cons = env.config_object.get_list('defunct-master',
+                            env.config_object.CONNECTIONS)
+            internal = env.config_object.get_list('defunct-master',
+                            env.config_object.INTERNAL_IPS)
+
+            cons.append(old_master)
+            internal.append(old_master_internal)
+
+            env.config_object.set_list('defunct-master',
+                env.config_object.CONNECTIONS,
+                cons)
+            env.config_object.set_list('defunct-master',
+                env.config_object.INTERNAL_IPS,
+                internal)
+        self._save_config()
 
 class DevServer(AppServer):
     """

@@ -10,8 +10,10 @@ from fabric.context_managers import cd
 from fabric.tasks import Task
 
 from fab_deploy2.functions import random_password
+from fab_deploy2 import functions
+from fab_deploy2.tasks import ServiceContextTask, task_method
 
-class PostgresInstall(Task):
+class Postgresql(ServiceContextTask):
     """
     Install postgresql on server
 
@@ -22,20 +24,7 @@ class PostgresInstall(Task):
     database server listen to all machines '*';
     create a user for database with password.
     """
-
-    name = 'master_setup'
-    db_version = '9.1'
-
-    encrypt = 'md5'
-    hba_txts = ('local   all    postgres                     ident\n'
-                'host    replication replicator  0.0.0.0/0   md5\n'
-                'local   all    all                          password\n'
-                '# # IPv4 local connections:\n'
-                'host    all    all         127.0.0.1/32     %(encrypt)s\n'
-                '# # IPv6 local connections:\n'
-                'host    all    all         ::1/128          %(encrypt)s\n'
-                '# # IPv4 external\n'
-                'host    all    all         0.0.0.0/0        %(encrypt)s\n')
+    context_name = 'postgresql'
 
     postgres_config = {
         'listen_addresses':  "'*'",
@@ -43,32 +32,181 @@ class PostgresInstall(Task):
         'wal_keep_segments': "32",
         'archive_timeout':   "130200",
         'max_wal_senders':   "5",
-        'archive_mode':      "on" }
+        'archive_mode':      "on"
+    }
 
-    data_dir_default_base = '/var/pgsql'
-    binary_path = None
-    version_directory_join = '.'
-    cron_file = '/etc/crontab'
-    keep_wals = 3
+    default_context = {
+        'data_dir_default_base' : '/var/pgsql',
+        'binary_path' : None,
+        'user' : 'postgres',
+        'group' : 'postgres',
+        'version_directory_join' : '.',
+        'cron_file' : '/etc/crontab',
+        'keep_wals' : 3,
+        'version' : '9.3',
+        'backup_path' : '/backups/dbs',
+        'pw_encryption' : 'md5',
+        'trigger' : '/tmp/pg_failover_trigger',
+        'package_path' : None,
+        'utils' : 'utils'
+    }
 
-    def _get_config_dir(self, db_version, data_dir):
-        return data_dir
+    @task_method
+    def setup_backups(self, path=None):
+        if not path:
+            path = self.backup_path
+
+        script = os.path.join(env.configs_dir, 'pg_backup.sh')
+        sudo('mkdir -p %s' % path)
+        sudo('chown {0}:{1} {2}'.format(self.user, self.group, path))
+
+        online_path = os.path.join(path, 'pg_backup.sh')
+        put(script, online_path, use_sudo=True)
+        sudo('sed -i s#BACKUPDIR=.*#BACKUPDIR=%s#g %s' % (path, online_path))
+        sudo('chmod +x %s' % online_path)
+
+        bash = run('which bash')
+        append('/tmp/pg_cron','0 0 * * *         %s %s' % (bash, online_path))
+        run('sudo su {0} -c "crontab < /tmp/pg_cron"'.format(self.user))
+
+    @task_method
+    def master_setup(self, db_version=None, **kwargs):
+        if db_version:
+            env.task_context['version'] = db_version
+
+        self._install_package()
+        self._setup_hba_config()
+        self._setup_postgres_config()
+        self._setup_archive_dir()
+
+        self._start_db_server()
+        self._setup_ssh_key()
+        self._create_user()
+        self._create_replicator()
+
+    @task_method
+    def start(self):
+        self._start_db_server()
+
+    @task_method
+    def stop(self):
+        self._stop_db_server()
+
+    @task_method
+    def slave_setup(self, master=None, **kwargs):
+        self._install_package()
+        self._stop_db_server()
+
+        self._setup_ssh_key()
+
+        self._prep_slave(master, full_sync=True)
+
+        self._setup_hba_config()
+        self._setup_archive_dir()
+
+        self._start_db_server()
+
+    @task_method
+    def promote_slave(self):
+        """
+        Promote given slave to master. Touches trigger file and updates
+        config without restarting the server.
+        """
+        sudo('touch {0}'.format(self.trigger))
+        self._setup_postgres_config(hot_standby='off')
+
+    @task_method
+    def update(self):
+        self._setup_hba_config()
+        self._setup_postgres_config()
+        self._setup_archive_dir()
+
+    @task_method
+    def update_slave(self, master=None, full_sync=False):
+        """
+        Updates the replication relation configuration on a slave.
+
+        If you specify full_sync=True then data will be rynced from
+        master. Otherwise only the configs are updated.
+        """
+        if not master:
+            print "Please provide the required argument master."
+            sys.exit(1)
+
+        if full_sync:
+            self._stop_db_server()
+
+        self._prep_slave(master, full_sync=full_sync)
+        self._start_db_server()
+
+    @task_method
+    def replication_status(self):
+        run('echo "SELECT pg_is_in_recovery();" | sudo su {0} -c psql'.format(self.user))
+        run('echo "select now() - pg_last_xact_replay_timestamp() AS replication_delay;" | sudo su {0} -c psql'.format(self.user))
+
+    @task_method
+    def create_user(self, user=None):
+        self._create_user(user=user)
+
+    @task_method
+    def create_db(self, db_name=None, user=None):
+        user = self._get_username(user=user)
+        while not db_name:
+            db_name = raw_input("Enter your database name: ")
+
+        db_name = db_name.replace(' ', '')
+        run('sudo su {0} -c "createdb -O {1} -E UNICODE {2}"'.format(self.user, user, db_name))
+
+    def _install_package(self):
+        raise NotImplementedError()
+
+    def _stop_db_server(self):
+        raise NotImplementedError()
+
+    def _start_db_server(self):
+        raise NotImplementedError()
+
+    @property
+    def db_version(self):
+        version = self.version
+        return self.version_directory_join.join(version.split('.')[:2])
+
+    @property
+    def home_dir(self):
+        if not env.task_context.get('home_dir'):
+            env.task_context['home_dir'] = self._get_home_dir()
+        return env.task_context['home_dir']
 
     def _get_home_dir(self):
-        output = run('grep postgres /etc/passwd | cut -d: -f6')
+        output = run('grep {0} /etc/passwd | cut -d: -f6'.format(self.user))
         return output.stdout
 
-    def _get_data_dir(self, db_version):
+    @property
+    def data_dir(self):
+        if not env.task_context.get('data_dir'):
+            env.task_context['data_dir'] = self._get_data_dir()
+        return env.task_context['data_dir']
+
+    def _get_data_dir(self):
         output = run('echo $PGDATA')
         if output.stdout and exists(output.stdout, use_sudo=True):
             return output.stdout
 
         data_path = self.data_dir_default_base
-        data_version_path = os.path.join(data_path, 'data%s' %db_version)
+        data_version_path = os.path.join(data_path, 'data%s' % self.db_version)
         if exists(data_version_path, use_sudo=True):
             return data_version_path
         else:
             return os.path.join(data_path, 'data')
+
+    @property
+    def config_dir(self):
+        if not env.task_context.get('config_dir'):
+            env.task_context['config_dir'] = self._get_config_dir()
+        return env.task_context['config_dir']
+
+    def _get_config_dir(self):
+        return self.data_dir
 
     def _setup_parameter(self, filename, **kwargs):
         for key, value in kwargs.items():
@@ -76,27 +214,28 @@ class PostgresInstall(Task):
             new = "%s = %s" %(key, value)
             sudo('sed -i "/%s/ c\%s" %s' %(origin, new, filename))
 
-    def _setup_hba_config(self, config_dir, encrypt=None):
+    def _setup_hba_config(self):
         """
         enable postgres access without password from localhost
         """
-
-        if not encrypt:
-            encrypt = self.encrypt
-
-        hba_conf = os.path.join(config_dir, 'pg_hba.conf')
-        kwargs = {'encrypt':encrypt}
-        hba_txts = self.hba_txts % kwargs
-
+        hba_conf = os.path.join(self.config_dir, 'pg_hba.conf')
         if exists(hba_conf, use_sudo=True):
-            sudo("echo '%s' > %s" %(hba_txts, hba_conf))
+            context = self.get_template_context()
+            functions.render_template("postgresql/pg_hba.conf", hba_conf,
+                                      context=context, use_sudo=True)
+            sudo('chown {0}:{1} {2}'.format(self.user, self.group, hba_conf))
         else:
             print ('Could not find file %s. Please make sure postgresql was '
-                   'installed and data dir was created correctly.'%hba_conf)
+                   'installed and data dir was created correctly.'% hba_conf)
             sys.exit(1)
 
-    def _setup_postgres_config(self, config_dir, config):
-        postgres_conf = os.path.join(config_dir, 'postgresql.conf')
+    def _setup_postgres_config(self, **extra_kwargs):
+        config = dict(self.postgres_config)
+        config['archive_command'] = ("'cp %s %s/wal_archive/%s'"
+                                                   %('%p', self.data_dir, '%f'))
+        config.update(extra_kwargs)
+
+        postgres_conf = os.path.join(self.config_dir, 'postgresql.conf')
 
         if exists(postgres_conf, use_sudo=True):
             self._setup_parameter(postgres_conf, **config)
@@ -108,50 +247,75 @@ class PostgresInstall(Task):
     def _setup_wal_cron(self, wal_dir):
         append('{0}'.format(self.cron_file),
                '0 4 * * * root find {0}* -type f -mtime +{1} -delete'.format(
-                                    wal_dir, self.keep_wals),
-               use_sudo=True)
+                                    wal_dir, self.keep_wals), use_sudo=True)
 
-    def _setup_archive_dir(self, data_dir):
-        archive_dir = os.path.join(data_dir, 'wal_archive')
-        sudo("mkdir -p %s" % archive_dir)
-        sudo("chown postgres:postgres %s" % archive_dir)
+    def _setup_archive_dir(self):
+        archive_dir = os.path.join(self.data_dir, 'wal_archive')
+        sudo("mkdir -p {0}".format(archive_dir))
+        sudo("chown {0}:{1} {2}".format(self.user, self.group, archive_dir))
         self._setup_wal_cron(archive_dir)
         return archive_dir
 
     def _setup_ssh_key(self):
-        ssh_dir = os.path.join(self._get_home_dir(), '.ssh')
+        ssh_dir = os.path.join(self.home_dir, '.ssh')
+
         rsa = os.path.join(ssh_dir, 'id_rsa')
         if exists(rsa, use_sudo=True):
             print "rsa key exists, skipping creating"
         else:
             sudo('mkdir -p %s' %ssh_dir)
-            sudo('chown -R postgres:postgres %s' % ssh_dir)
+            sudo('chown -R {0}:{1} {2}'.format(self.user, self.group, ssh_dir))
             sudo('chmod -R og-rwx %s' %ssh_dir)
-            run('sudo su postgres -c "ssh-keygen -t rsa -f %s -N \'\'"' % rsa)
+            run('sudo su {0} -c "ssh-keygen -t rsa -f {1} -N \'\'"'.format(self.user, rsa))
 
-    def _create_user(self, section):
-        username = raw_input("Now we are creating the database user, please "
+    def _get_username(self, user=None):
+        if not user:
+            section = env.host_roles.get(env.host_string)
+            if env.config_object.has_option(section, env.config_object.USERNAME):
+                user = env.config_object.get(section, env.config_object.USERNAME)
+
+        if not user:
+            user = raw_input("Now we are creating the database user, please "
                              "specify a username: ")
-        # 'postgres' is postgresql superuser
-        while username == 'postgres':
-            username = raw_input("Sorry, you are not allowed to use postgres "
+
+        while user == self.user:
+            user = raw_input("Sorry, you are not allowed to use your root user "
                                  "as username, please choose another one: ")
+        return user
+
+    def _create_user(self, user=None):
+        user = self._get_username(user=user)
         db_out = run('echo "select usename from pg_shadow where usename=\'%s\'" |'
-                     'sudo su postgres -c psql' % username)
-        if username in db_out:
-            print 'user %s already exists, skipping creating user.' %username
+                     'sudo su %s -c psql' % (user, self.user))
+        if user in db_out:
+            print 'user %s already exists, skipping creating user.' %user
         else:
-            run("sudo su postgres -c 'createuser -D -S -R -P %s'" % username)
+            run("sudo su {0} -c 'createuser -D -S -R -P {1}'".format(self.user, user))
 
-        env.config_object.set(section, env.config_object.USERNAME, username)
+        section = env.host_roles.get(env.host_string)
+        if section:
+            env.config_object.set(section, env.config_object.USERNAME, user)
 
-        return username
+        return user
 
-    def _create_replicator(self, db_version, section):
-        db_out = run("echo '\du replicator' | sudo su postgres -c 'psql'")
+    def _get_replicator_pass(self):
+        try:
+            password = env.config_object.get('db-server',
+                                             env.config_object.REPLICATOR_PASS)
+            return password
+        except:
+            print ("I can't find replicator-password from db-server section "
+                   "of your server.ini file.\n Please set up replicator user "
+                   "in your db-server, and register its info in server.ini")
+            sys.exit(1)
+
+    def _create_replicator(self):
+        section = env.host_roles.get(env.host_string)
+        db_out = run("echo '\du replicator' | sudo su {0} -c 'psql'".format(self.user))
         if 'replicator' not in db_out:
             replicator_pass = random_password(12)
-            if env.config_object.has_option(section,
+
+            if section and env.config_object.has_option(section,
                             env.config_object.REPLICATOR_PASS):
                 pw = env.config_object.get(section,
                             env.config_object.REPLICATOR_PASS)
@@ -161,125 +325,81 @@ class PostgresInstall(Task):
 
             c1 = ('CREATE USER replicator REPLICATION LOGIN ENCRYPTED '
                   'PASSWORD \"\'%s\'\"' %replicator_pass)
-            run("echo %s | sudo su postgres -c \'psql\'" %c1)
-            history_file = os.path.join(self._get_home_dir(), '.psql_history')
+            run("echo {0} | sudo su {1} -c \'psql\'".format(c1, self.user))
+            history_file = os.path.join(self.home_dir, '.psql_history')
             if exists(history_file):
                 sudo('rm %s' %history_file)
-            env.config_object.set(section, env.config_object.REPLICATOR,
-                                  'replicator')
-            env.config_object.set(section, env.config_object.REPLICATOR_PASS,
-                                  replicator_pass)
+
+            if section:
+                env.config_object.set(section, env.config_object.REPLICATOR,
+                                      'replicator')
+                env.config_object.set(section, env.config_object.REPLICATOR_PASS,
+                                      replicator_pass)
             return replicator_pass
         else:
             print "user replicator already exists, skipping creating user."
             return None
 
-    def _get_db_version(self, db_version):
-        if not db_version:
-            db_version = self.db_version
-        return self.version_directory_join.join(db_version.split('.')[:2])
+    def _prep_slave(self, master, full_sync=True):
+        results = execute('utils.get_ip', None, hosts=[master])
+        master_ip = results[master]
+        assert master_ip
 
-    def _install_package(self, db_version):
-        raise NotImplementedError()
+        if full_sync:
+            self._sync_from_master(master)
 
-    def _restart_db_server(self, db_version):
-        raise NotImplementedError()
+        self._setup_postgres_config(hot_standby='on')
+        self._setup_recovery_conf(master_ip)
 
-    def _stop_db_server(self, db_version):
-        raise NotImplementedError()
+        with settings(warn_only=True):
+            sudo('rm {0}'.format(self.trigger))
 
-    def _start_db_server(self, db_version):
-        raise NotImplementedError()
+    def _sync_from_master(self, master):
+        self._ssh_key_exchange(master, env.host_string)
+        results = execute('utils.get_ip', None)
+        slave_ip = results[env.host_string]
+        assert slave_ip
 
-    def run(self, db_version=None, encrypt=None, save_config=True,
-            section='db-server', **kwargs):
-        """
-        """
-        db_version = self._get_db_version(db_version)
+        with settings(host_string=master):
+            run('echo "select pg_start_backup(\'backup\', true)" | sudo su postgres -c \'psql\'')
+            run('sudo su postgres -c "rsync -av --exclude postmaster.pid '
+                '--exclude pg_xlog --exclude server.crt '
+                '--exclude server.key '
+                '%s/ postgres@%s:%s/"'%(self.data_dir, slave_ip, self.data_dir))
+            run('echo "select pg_stop_backup()" | sudo su postgres -c \'psql\'')
 
-        self._install_package(db_version)
-        data_dir = self._get_data_dir(db_version)
-        config_dir = self._get_config_dir(db_version, data_dir)
+    def _setup_recovery_conf(self, master_ip):
+        context = self.get_template_context()
 
-        config = dict(self.postgres_config)
-        config['archive_command'] = ("'cp %s %s/wal_archive/%s'"
-                                                   %('%p', data_dir, '%f'))
-
-        self._setup_hba_config(config_dir, encrypt)
-        self._setup_postgres_config(config_dir, config)
-        self._setup_archive_dir(data_dir)
-
-        self._restart_db_server(db_version)
-        self._setup_ssh_key()
-        self._create_user(section)
-        self._create_replicator(db_version, section)
-
-        if save_config:
-            env.config_object.save(env.conf_filename)
-
-
-class SlaveSetup(PostgresInstall):
-    """
-    Set up master-slave streaming replication: slave node
-    """
-
-    name = 'slave_setup'
-
-    postgres_config = {
-        'listen_addresses': "'*'",
-        'wal_level':      "hot_standby",
-        'hot_standby':    "on"}
-
-    def _get_master_db_version(self):
-        output = run("psql --version | head -1 | awk '{print $3}'")
-        if output.stdout:
-            return self._get_db_version(output.stdout)
-
-    def _get_replicator_pass(self):
-        try:
-            password = env.config_object.get_list('db-server',
-                                             env.config_object.REPLICATOR_PASS)
-            return password[0]
-        except:
-            print ("I can't find replicator-password from db-server section "
-                   "of your server.ini file.\n Please set up replicator user "
-                   "in your db-server, and register its info in server.ini")
-            sys.exit(1)
-
-    def _setup_recovery_conf(self, master_ip, password, data_dir):
         psql_bin = ''
         if self.binary_path:
             psql_bin = self.binary_path
 
-        wal_dir = os.path.join(data_dir, 'wal_archive')
-        recovery_conf = os.path.join(data_dir, 'recovery.conf')
+        wal_dir = os.path.join(self.data_dir, 'wal_archive')
+        recovery_conf = os.path.join(self.data_dir, 'recovery.conf')
 
         if psql_bin:
             pg_archive = '{0}pg_archivecleanup'.format(psql_bin)
         else:
             pg_archive = run('which pg_archivecleanup')
 
-        txts = (("standby_mode = 'on'\n") +
-                ("primary_conninfo = 'host=%s " %master_ip) +
-                    ("port=5432 user=replicator password=%s'\n" % password) +
-                ("trigger_file = '/tmp/pgsql.trigger'\n") +
-                ("restore_command = 'cp -f %s/%s </dev/null'\n"
-                    %(wal_dir, '%f %p')) +
-                ("archive_cleanup_command = '%s %s %s'\n"
-                    %(pg_archive, wal_dir, "%r")))
+        context[self.context_name]['wal_dir'] = wal_dir
+        context[self.context_name]['pg_archive'] = pg_archive
+        context['master_ip'] = master_ip
+        context['replication_pw'] = self._get_replicator_pass()
 
-        sudo('touch %s' % recovery_conf)
-        sudo('echo "" > %s' % recovery_conf)
-        append(recovery_conf, txts, use_sudo=True)
-        sudo('chown postgres:postgres %s' %recovery_conf)
+        functions.render_template("postgresql/recovery.conf", recovery_conf,
+                                  context=context, use_sudo=True)
+        sudo('chown {0}:{1} {2}'.format(self.user, self.group, recovery_conf))
 
     def _ssh_key_exchange(self, master, slave):
         """
         copy ssh key(pub) from master to slave, so that master can access slave
         without password via ssh
         """
-        ssh_dir = os.path.join(self._get_home_dir(), '.ssh')
+        ssh_dir = os.path.join(self.home_dir, '.ssh')
         known = os.path.join(ssh_dir, 'known_hosts')
+
         with settings(host_string=master):
             rsa_pub = os.path.join(ssh_dir, 'id_rsa.pub')
             pub_key = sudo('cat %s' %rsa_pub)
@@ -288,174 +408,11 @@ class SlaveSetup(PostgresInstall):
 
         with settings(host_string=slave):
             authorized_keys = os.path.join(ssh_dir, 'authorized_keys')
-            run('sudo su postgres -c "echo %s >> %s"'
-                %(pub_key, authorized_keys))
+            if not exists(authorized_keys):
+                sudo('touch {0}'.format(authorized_keys))
+                sudo('chown {0}:{1} {2}'.format(self.user, self.group, authorized_keys))
+
+            append(authorized_keys, pub_key, use_sudo=True)
             results = execute('utils.get_ip', None, hosts=[master])
             master_ip = results[master]
             sudo('ssh-keyscan -H {0} >> {1}'.format(master_ip, known))
-
-
-    def run(self, master=None, encrypt=None, section=None, **kwargs):
-        """
-        """
-        if not master:
-            print "Hey, a master is required for slave."
-            sys.exit(1)
-
-        results = execute('utils.get_ip', None, hosts=[master])
-        master_ip = results[master]
-        assert master_ip
-
-        replicator_pass = self._get_replicator_pass()
-
-        with settings(host_string=master):
-            db_version = self._get_master_db_version()
-
-        slave = env.host_string
-        slave_ip = slave.split('@')[1]
-
-        self._install_package(db_version)
-        data_dir = self._get_data_dir(db_version)
-        config_dir = self._get_config_dir(db_version, data_dir)
-
-        self._stop_db_server(db_version)
-
-        self._setup_ssh_key()
-        self._ssh_key_exchange(master, slave)
-
-        with settings(host_string=master):
-            run('echo "select pg_start_backup(\'backup\', true)" | sudo su postgres -c \'psql\'')
-            run('sudo su postgres -c "rsync -av --exclude postmaster.pid '
-                '--exclude pg_xlog --exclude server.crt '
-                '--exclude server.key '
-                '%s/ postgres@%s:%s/"'%(data_dir, slave_ip, data_dir))
-            run('echo "select pg_stop_backup()" | sudo su postgres -c \'psql\'')
-
-        self._setup_postgres_config(config_dir, self.postgres_config)
-        self._setup_archive_dir(data_dir)
-        self._setup_recovery_conf(master_ip, replicator_pass,
-                                  data_dir)
-        self._setup_hba_config(config_dir, encrypt)
-
-        self._start_db_server(db_version)
-        print('password for replicator on master node is %s' % replicator_pass)
-
-class Backups(Task):
-    path = '/backups/dbs'
-    name = 'setup_backups'
-
-    def run(self, path=None, **kwargs):
-        if not path:
-            path = self.path
-
-        script = os.path.join(env.configs_dir, 'pg_backup.sh')
-        sudo('mkdir -p %s' % path)
-        sudo('chown postgres:postgres %s' % path)
-
-        online_path = os.path.join(path, 'pg_backup.sh')
-        put(script, online_path, use_sudo=True)
-        sudo('sed -i s#BACKUPDIR=.*#BACKUPDIR=%s#g %s' % (path, online_path))
-        sudo('chmod +x %s' % online_path)
-
-        bash = run('which bash')
-        append('/tmp/pg_cron','0 0 * * *         %s %s' % (bash, online_path))
-        run('sudo su postgres -c "crontab < /tmp/pg_cron"')
-
-
-
-class PromoteSlave(PostgresInstall):
-    """
-    Promotes chosen slave to master
-    """
-    name = 'promote_slave'
-
-
-    def run(self, slave_host_string=None, slave_internal_ip=None,
-                    master_host_string=None, master_internal_ip=None,
-                    db_version=None, **kwargs):
-        env.host_string = slave_host_string
-        # run('touch /tmp/pg_failover_trigger')
-
-        # db_version = self._get_db_version(db_version)
-        # data_dir = self._get_data_dir(db_version)
-        # config_dir = self._get_config_dir(db_version, data_dir)
-
-        # config = dict(self.postgres_config)
-        # self._setup_postgres_config(config_dir, config)
-
-        added = False
-        if env.config_object.has_section('db-server') and \
-            env.config_object.has_section('slave-db') and \
-            slave_host_string in env.config_object.get_list('slave-db', env.config_object.CONNECTIONS) and \
-            slave_internal_ip in env.config_object.get_list('slave-db', env.config_object.INTERNAL_IPS):
-
-                #Add slave hoststring to master list
-                master_host_strings = env.config_object.get_list('db-server', env.config_object.CONNECTIONS)
-                master_host_strings.append(slave_host_string)
-                env.config_object.set_list('db-server',
-                    env.config_object.CONNECTIONS,
-                    master_host_strings)
-
-                env.roledefs['db-server'].append(slave_host_string)
-                env.host_roles[slave_host_string] = 'db-server'
-
-                #Add slave internal IP to master list
-                master_internal_ips = env.config_object.get_list('db-server', env.config_object.INTERNAL_IPS)
-                master_internal_ips.append(slave_internal_ip)
-                env.config_object.set_list('db-server',
-                    env.config_object.INTERNAL_IPS,
-                    master_internal_ips)
-
-                #Remove slave hoststring from slave list
-                slave_host_strings = env.config_object.get_list('slave-db', env.config_object.CONNECTIONS)
-                slave_host_strings.remove(slave_host_string)
-                env.config_object.set_list('slave-db',
-                    env.config_object.CONNECTIONS,
-                    slave_host_strings)
-
-                env.roledefs['slave-db'].remove(slave_host_string)
-
-                #Remove slave internal ip from slave list
-                slave_internal_ips = env.config_object.get_list('slave-db', env.config_object.INTERNAL_IPS)
-                slave_internal_ips.remove(slave_internal_ip)
-                env.config_object.set_list('slave-db',
-                    env.config_object.INTERNAL_IPS,
-                    slave_internal_ips)
-
-        if master_host_string and \
-            master_host_string in env.config_object.get_list('db-server', env.config_object.CONNECTIONS) and \
-            master_internal_ip in env.config_object.get_list('db-server', env.config_object.INTERNAL_IPS):
-
-                #Move master hoststring to defunct masters list
-                master_host_strings = env.config_object.get_list('db-server', env.config_object.CONNECTIONS)
-                master_host_strings.remove(master_host_string)
-
-                if not env.config_object.has_section('defunct-master'):
-                    env.config_object.add_section('defunct-master')
-
-                env.config_object.set_list('defunct-master',
-                    env.config_object.CONNECTIONS,
-                    [master_host_string,])
-
-                env.config_object.set_list('db-server',
-                    env.config_object.CONNECTIONS,
-                    master_host_strings)
-
-                #Move master internal ip to defunt masters list
-                master_internal_ips = env.config_object.get_list('db-server', env.config_object.INTERNAL_IPS)
-                master_internal_ips.remove(master_internal_ip)
-
-                env.config_object.set_list('defunct-master',
-                    env.config_object.INTERNAL_IPS,
-                    [master_internal_ip,])
-
-                env.config_object.set_list('db-server',
-                    env.config_object.INTERNAL_IPS,
-                    master_internal_ips)
-
-                env.config_object.save(env.conf_filename)
-
-                added = True
-        return added
-
-
