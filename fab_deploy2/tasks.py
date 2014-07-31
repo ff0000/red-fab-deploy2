@@ -1,11 +1,13 @@
 import sys
 import inspect
 import types
+from functools import wraps
 
 from fabric.tasks import Task, WrappedCallableTask
-from fabric.api import env
+from fabric.api import env, settings
 
 from . import functions
+
 
 def task_method(*args, **kwargs):
     """
@@ -13,6 +15,11 @@ def task_method(*args, **kwargs):
 
     It accepts the same arguments as ``fabric.decorators.task`` so
     use it on methods just like fabric's decorator is used on functions.
+
+    Tasks are run with a blank task_context attribute added to the
+    env varible that is unique for that task. This can be used to
+    overide context or store calculated values for the duration of
+    a task run.
 
     The class decorated method belongs to should be a subclass
     of :class:`.MultiTask`.
@@ -23,11 +30,15 @@ def task_method(*args, **kwargs):
         func, args = args[0], ()
 
     def decorator(func):
-        func._task_info = dict(
+        @wraps(func)
+        def f(*a, **k):
+            with settings(task_context={}):
+                return func(*a, **k)
+        f._task_info = dict(
             args = args,
             kwargs = kwargs
         )
-        return func
+        return f
 
     return decorator if invoked else decorator(func)
 
@@ -98,10 +109,19 @@ class _ContextMixin(object):
     """
     Mixin for creating context aware task.
 
-    For attribute declared in the self.default_context
-    dictionary can be overiden at the role level. Each
-    attribute declared in that dictionary can also be
-    accessed on the instance ei: self.foo.
+    Attributes declared in the self.default_context
+    dictionary can be overiden at multiple levels. The following
+    is the order in which the final value for an attribute is resolved.
+
+    1) env.task_context for just the key value. This attribute is
+       reset on every new task that is called.
+    2) Matching key in env.context[roll_name][self.namespace]
+    3) Matching dictionary in env.context[self.namespace]
+    4) Class attribute
+    5) Default value from self.default_context
+
+    The final value for that varible can always be accessed
+    on the instance ei: self.foo.
 
     The attribute used to lookup global or role overides
     is self.namespace. This defaults to self.context_name.
@@ -111,24 +131,36 @@ class _ContextMixin(object):
     class.
     """
 
+    def _value_for_default(self, key):
+        if env.task_context.get(key):
+            return env.task_context.get(key)
+
+        context_dict = env.context.get(self.namespace, {})
+        role = env.host_roles.get(env.host_string)
+        if role:
+            role_dict = functions.get_role_context(role)
+            if role_dict:
+                role_dict = role_dict.get(self.namespace, {})
+                context_dict.update(role_dict)
+
+        if key in context_dict:
+            return context_dict.get(key)
+        else:
+            try:
+                return object.__getattribute__(self, key)
+            except AttributeError:
+                return self.default_context.get(key)
+
     def __getattr__(self, key):
         if self.default_context and key in self.default_context:
-            context_dict = env.context.get(self.namespace, {})
-            role = env.host_roles.get(env.host_string)
-            if role:
-                role_dict = functions.get_role_context(role)
-                if role_dict:
-                    role_dict = role_dict.get(self.namespace, {})
-                    context_dict.update(role_dict)
+            return self._value_for_default(key)
+        return object.__getattribute__(self, key)
 
-            if key in context_dict:
-                return context_dict.get(key)
-            else:
-                try:
-                    return super(_ContextMixin, self).__getattribute__(key)
-                except AttributeError:
-                    return self.default_context.get(key)
-        return super(_ContextMixin, self).__getattribute__(key)
+    def __getattribute__(self, key):
+        if key != 'default_context' and key[0] != '_':
+            if self.default_context and key in self.default_context:
+                return self._value_for_default(key)
+        return object.__getattribute__(self, key)
 
     def get_task_context(self):
         """
