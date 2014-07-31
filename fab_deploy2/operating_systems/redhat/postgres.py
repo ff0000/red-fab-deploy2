@@ -8,49 +8,9 @@ from fabric.contrib.files import exists, append
 from fabric.context_managers import settings
 
 from fab_deploy2.base import postgres as base_postgres
+from fab_deploy2 import functions
 
-
-class RHMixin(object):
-    binary_path = '/usr/pgsql-9.1/bin/'
-    data_dir_default_base = '/var/lib/pgsql'
-
-    def _get_data_dir(self, db_version):
-        return os.path.join(
-            self.data_dir_default_base, '%s' % db_version, 'data')
-
-    def _install_package(self, db_version):
-        sudo("rpm -U --replacepkgs http://yum.postgresql.org/9.1/redhat/rhel-6-x86_64/pgdg-redhat91-9.1-5.noarch.rpm")
-        pk_version = db_version.replace('.', '')
-        sudo("yum -y install postgresql%s-server" % pk_version)
-        sudo("yum -y install postgresql%s-contrib" % pk_version)
-        data_dir = self._get_data_dir(db_version)
-        postgres_conf = os.path.join(
-            self._get_config_dir(db_version, data_dir),
-            'postgresql.conf')
-        self._override_pgdata(db_version)
-        if not exists(postgres_conf, use_sudo=True):
-            sudo("service postgresql-%s initdb" % db_version)
-
-    def _restart_db_server(self, db_version):
-        with settings(warn=True):
-            sudo('service postgresql-%s restart' % db_version)
-
-    def _stop_db_server(self, db_version):
-        sudo('service postgresql-%s stop' % db_version)
-
-    def _start_db_server(self, db_version):
-        sudo('service postgresql-%s start' % db_version)
-
-    def _override_pgdata(self, db_version):
-        text = [
-            "PGDATA=%s" % self._get_data_dir(db_version),
-        ]
-        sudo('touch /etc/sysconfig/pgsql/postgresql-%s' % db_version)
-        append('/etc/sysconfig/pgsql/postgresql-%s' % db_version,
-                                    text, use_sudo=True)
-
-
-class PostgresInstall(RHMixin, base_postgres.PostgresInstall):
+class Postgresql(base_postgres.Postgresql):
     """
     Install postgresql on server.
 
@@ -65,23 +25,42 @@ class PostgresInstall(RHMixin, base_postgres.PostgresInstall):
     create a user for database with password.
     """
 
-    name = 'master_setup'
-    db_version = '9.1'
+    binary_path = '/usr/pgsql-9.1/bin/'
+    data_dir_default_base = '/var/lib/pgsql'
+    version = '9.1'
+    package_path = 'http://yum.postgresql.org/9.1/redhat/rhel-6-x86_64/pgdg-redhat91-9.1-5.noarch.rpm'
+
+    def _get_data_dir(self):
+        return os.path.join(
+            self.data_dir_default_base, '%s' % self.db_version, 'data')
+
+    def _install_package(self):
+        sudo("rpm -U --replacepkgs {0}".format(self.package_path))
+        pk_version = self.db_version.replace('.', '')
+        sudo("yum -y install postgresql%s-server" % pk_version)
+        sudo("yum -y install postgresql%s-contrib" % pk_version)
+
+        postgres_conf = os.path.join(self.config_dir, 'postgresql.conf')
+        self._override_pgdata()
+        if not exists(postgres_conf, use_sudo=True):
+            sudo("service postgresql-%s initdb" % self.db_version)
+
+    def _stop_db_server(self):
+        sudo('service postgresql-%s stop' % self.db_version)
+
+    def _start_db_server(self):
+        service = "postgresql-{0}".format(self.db_version)
+        task = "{0}.start_or_restart_service".format(self.utils)
+        functions.execute_on_host(task, service)
+
+    def _override_pgdata(self):
+        text = [
+            "PGDATA=%s" % self.data_dir,
+        ]
+        sudo('touch /etc/sysconfig/pgsql/postgresql-%s' % self.db_version)
+        append('/etc/sysconfig/pgsql/postgresql-%s' % self.db_version,
+                                    text, use_sudo=True)
 
 
-class SlaveSetup(RHMixin, base_postgres.SlaveSetup):
-    """
-    Set up master-slave streaming replication: slave node
-    """
 
-    name = 'slave_setup'
-
-
-class PGBouncerInstall(Task):
-    pass
-
-
-setup = PostgresInstall()
-slave_setup = SlaveSetup()
-setup_pgbouncer = PGBouncerInstall()
-setup_backup = base_postgres.Backups()
+Postgresql().as_tasks()

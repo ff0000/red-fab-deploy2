@@ -45,6 +45,7 @@ def start_or_restart(name, hosts=[]):
         result = run('svcs {0}'.format(name))
         if 'maintenance' in result:
             run('svcadm clear {0}'.format(name))
+            run('svcadm enable {0}'.format(name))
         elif 'disabled' in result:
             run('svcadm enable {0}'.format(name))
         else:

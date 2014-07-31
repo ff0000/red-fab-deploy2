@@ -6,30 +6,9 @@ from fabric.operations import put
 from fabric.tasks import Task
 
 from fab_deploy2.base import postgres as base_postgres
+from fab_deploy2 import functions
 
-class UbuntuMixin(object):
-    binary_path = '/var/lib/postgresql/bin/'
-
-    def _get_data_dir(self, db_version):
-        return os.path.join('/var/lib/postgresql', '%s' % db_version, 'main')
-
-    def _get_config_dir(self, db_version, data_dir):
-        return os.path.join('/etc/postgresql', '%s' % db_version, 'main')
-
-    def _install_package(self, db_version):
-        sudo("apt-get -y install postgresql")
-        sudo("apt-get -y install postgresql-contrib")
-
-    def _restart_db_server(self, db_version):
-        sudo('service postgresql restart')
-
-    def _stop_db_server(self, db_version):
-        sudo('service postgresql stop')
-
-    def _start_db_server(self, db_version):
-        sudo('service postgresql start')
-
-class PostgresInstall(UbuntuMixin, base_postgres.PostgresInstall):
+class Postgresql(base_postgres.Postgresql):
     """
     Install postgresql on server.
 
@@ -45,15 +24,26 @@ class PostgresInstall(UbuntuMixin, base_postgres.PostgresInstall):
     """
 
     name = 'master_setup'
-    db_version = '9.1'
+    binary_path = '/var/lib/postgresql/bin/'
+    version = '9.1'
 
+    def _get_data_dir(self):
+        return os.path.join('/var/lib/postgresql', '%s' % self.db_version, 'main')
 
-class SlaveSetup(UbuntuMixin, base_postgres.SlaveSetup):
-    """
-    Set up master-slave streaming replication: slave node
-    """
+    def _get_config_dir(self):
+        return os.path.join('/etc/postgresql', '%s' % self.db_version, 'main')
 
-    name = 'slave_setup'
+    def _install_package(self):
+        sudo("apt-get -y install postgresql")
+        sudo("apt-get -y install postgresql-contrib")
+
+    def _stop_db_server(self):
+        sudo('service postgresql stop')
+
+    def _start_db_server(self):
+        service = "postgresql"
+        task = "{0}.start_or_restart_service".format(self.utils)
+        functions.execute_on_host(task, service)
 
 
 class PGBouncerInstall(Task):
@@ -137,7 +127,5 @@ class PGBouncerInstall(Task):
         sudo("sed -i 's/START=0/START=1/' %s" %pgbouncer_control_file)
         sudo('service pgbouncer start')
 
-setup = PostgresInstall()
-slave_setup = SlaveSetup()
+Postgresql().as_tasks()
 setup_pgbouncer = PGBouncerInstall()
-setup_backup = base_postgres.Backups()

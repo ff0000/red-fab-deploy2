@@ -2,6 +2,7 @@ import subprocess
 import urlparse
 import os
 import random
+import sys
 
 from fabric.api import env, put, execute, run, sudo
 from fabric.task_utils import crawl
@@ -144,6 +145,29 @@ def get_context(context=None):
     })
     return context
 
+def get_valid_host_from_conf(section):
+    cons = env.config_object.get_list(section,
+                                      env.config_object.CONNECTIONS)
+    n = len(cons)
+    if n == 0:
+        print ('I could not find any {0} servers in server.ini.'.format(section))
+        sys.exit(1)
+    elif n == 1:
+        return cons[0]
+    else:
+        for i in range(1, n+1):
+            print "[%2d ]: %s" %(i, cons[i-1])
+        while True:
+            choice = raw_input('I found %d servers in server.ini.'
+                               'Which %s do you want to use? ' % (n, section))
+            try:
+                choice = int(choice)
+                return cons[choice-1]
+            except:
+                print "please input a number between 1 and %d" %n-1
+
+
+
 def template_to_string(filename, context=None):
     local_path = os.path.join(env.deploy_path, 'templates')
     platform = os.path.join(env.configs_dir, 'templates',
@@ -157,7 +181,7 @@ def template_to_string(filename, context=None):
     template = (envi.get_template(filename)).render(**context)
     return template
 
-def render_template(filename, remote_path=None, context=None):
+def render_template(filename, remote_path=None, context=None, use_sudo=False):
     sudo('mkdir -p {0}'.format(env.base_remote_path))
     sudo('mkdir -p {0}'.format(env.configs_path))
     sudo('chown {0} {1}'.format(env.user, env.configs_path))
@@ -180,5 +204,5 @@ def render_template(filename, remote_path=None, context=None):
 
     # Render template
     template = template_to_string(filename, context=context)
-    put(local_path=io.StringIO(template), remote_path = dest_path)
+    put(local_path=io.StringIO(template), remote_path = dest_path, use_sudo=use_sudo)
     return dest_path
