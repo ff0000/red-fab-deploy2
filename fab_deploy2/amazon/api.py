@@ -18,7 +18,7 @@ from utils import  get_security_group
 
 
 DEFAULT_AMI     = 'ami-5965401c' # ubuntu 12.04 x86_64
-DEFAULT_INSTANCE_TYPE = 'm1.medium'
+DEFAULT_INSTANCE_TYPE = 'm3.medium'
 DEFAULT_REGION  = 'us-west-1'
 
 
@@ -40,6 +40,7 @@ def get_ec2_connection(server_type, **kwargs):
 
     amzn = env.get('AWS_CREDENTIAL',
                    os.path.join(env.deploy_path, 'amazon.ini'))
+
     if not os.path.exists(amzn):
         print ("Cannot find environment variable AMAZON_CREDENTIALS which should"
                " point to a file with your aws_access_key and aws_secret_key info"
@@ -168,6 +169,7 @@ class New(Task):
         ami_id = kwargs.get('ami_id')
         if not ami_id:
             ami_id = DEFAULT_AMI
+        user = kwargs.get('user', 'ubuntu')
 
         task = functions.get_task_instance(setup_name)
         if task:
@@ -177,6 +179,8 @@ class New(Task):
                 instance_type = results['instance_type']
             if 'ami' in results:
                 ami_id = results['ami']
+            if 'user' in results:
+                user = results['user']
         else:
             print "I don't know how to add a %s server" % type
             sys.exit(1)
@@ -184,6 +188,7 @@ class New(Task):
         assert config_section
         amzn = env.get('AWS_CREDENTIAL',
                        os.path.join(env.deploy_path, 'amazon.ini'))
+
         parser = ConfigParser()
         parser.read(amzn)
         key_name = parser.get('amazon-aws', 'ec2-key-name')
@@ -238,8 +243,8 @@ class New(Task):
         print "...Instance ID: %s" % instance.id
         print "...Public IP: %s" % ip
 
-        host_string = 'ubuntu@%s' % instance.public_dns_name
-        execute(setup_name, name=name, hosts=[host_string])
+        host_string = '{0}@{1}'.format(user, instance.public_dns_name)
+        execute(setup_name, hosts=[host_string])
 
 
 create_key = CreateKeyPair()

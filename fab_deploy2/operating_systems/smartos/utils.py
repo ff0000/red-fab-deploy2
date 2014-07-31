@@ -30,7 +30,7 @@ def get_interface(iprange=None):
     if iprange:
         ranges = [iprange]
     for ip in ranges:
-        interface = run("netstat -r -f dst:{0} | tail -n 1 | tr -s ' ' ' ' | cut -d ' ' -f 6".format(ip))
+        interface = run("netstat -rn -f dst:{0} | tail -n 1 | tr -s ' ' ' ' | cut -d ' ' -f 6".format(ip))
         if interface:
             return interface
 

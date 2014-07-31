@@ -7,3 +7,6 @@ from fab_deploy2.operating_systems.redhat import redis
 
 import servers
 import utils
+
+from fab_deploy2.amazon import api
+from fab_deploy2.amazon import manage

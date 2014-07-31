@@ -59,7 +59,7 @@ class PostgresInstall(JoyentMixin, base_postgres.PostgresInstall):
     """
 
     name = 'master_setup'
-    db_version = '9.1'
+    db_version = '9.3'
     cron_file = '/var/spool/cron/crontabs/root'
 
 class SlaveSetup(JoyentMixin, base_postgres.SlaveSetup):

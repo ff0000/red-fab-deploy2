@@ -120,7 +120,6 @@ class PostgresInstall(Task):
 
     def _setup_ssh_key(self):
         ssh_dir = os.path.join(self._get_home_dir(), '.ssh')
-
         rsa = os.path.join(ssh_dir, 'id_rsa')
         if exists(rsa, use_sudo=True):
             print "rsa key exists, skipping creating"
@@ -280,17 +279,21 @@ class SlaveSetup(PostgresInstall):
         without password via ssh
         """
         ssh_dir = os.path.join(self._get_home_dir(), '.ssh')
-
+        known = os.path.join(ssh_dir, 'known_hosts')
         with settings(host_string=master):
             rsa_pub = os.path.join(ssh_dir, 'id_rsa.pub')
-            with hide('output'):
-                pub_key = sudo('cat %s' %rsa_pub)
+            pub_key = sudo('cat %s' %rsa_pub)
+            slave_addr = slave.split('@')[1]
+            sudo('ssh-keyscan -H {0} >> {1}'.format(slave_addr, known))
 
         with settings(host_string=slave):
             authorized_keys = os.path.join(ssh_dir, 'authorized_keys')
-            with hide('output', 'running'):
-                run('sudo su postgres -c "echo %s >> %s"'
-                    %(pub_key, authorized_keys))
+            run('sudo su postgres -c "echo %s >> %s"'
+                %(pub_key, authorized_keys))
+            results = execute('utils.get_ip', None, hosts=[master])
+            master_ip = results[master]
+            sudo('ssh-keyscan -H {0} >> {1}'.format(master_ip, known))
+
 
     def run(self, master=None, encrypt=None, section=None, **kwargs):
         """

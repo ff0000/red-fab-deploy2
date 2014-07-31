@@ -8,3 +8,6 @@ from fab_deploy2.operating_systems.ubuntu import snmp
 
 import servers
 import utils
+
+from fab_deploy2.amazon import api
+from fab_deploy2.amazon import manage

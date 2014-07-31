@@ -134,6 +134,8 @@ class LBServer(BaseServer):
     config_section = 'load-balancer'
     git_branch = 'master'
 
+    proxy_section = 'app-server'
+
     def _install_packages(self):
         pass
 
@@ -174,6 +176,77 @@ class LBServer(BaseServer):
         """
         self._restart_services()
 
+    def _reset_config_object(self, servers_to_remove):
+        cons = env.config_object.get_list(self.proxy_section,
+                                      env.config_object.CONNECTIONS)
+        internal = env.config_object.get_list(self.proxy_section,
+                                      env.config_object.INTERNAL_IPS)
+
+        indexes = []
+        for server in servers_to_remove:
+            if server in cons:
+                indexes.append(cons.index(server))
+
+        if not indexes:
+            print "no {0} found that match {1}".format(self.proxy_section, servers)
+            sys.exit(1)
+
+        for i in indexes:
+            del cons[i]
+            del internal[i]
+
+        env.config_object.set_list(self.proxy_section,
+                            env.config_object.CONNECTIONS,
+                            cons)
+        env.config_object.set_list(self.proxy_section,
+                            env.config_object.INTERNAL_IPS,
+                            internal)
+
+    def _remove_servers(self, servers):
+        self._reset_config_object(servers)
+        self._update_server()
+        self._restart_services()
+
+    @task_method
+    def remove_servers(self, servers=None, save=False):
+        """
+        Remove servers from the load balancer configuration
+        """
+        cons = env.config_object.get_list(self.proxy_section,
+                                  env.config_object.CONNECTIONS)
+        internal = env.config_object.get_list(self.proxy_section,
+                                      env.config_object.INTERNAL_IPS)
+
+        if not servers:
+            n = len(cons)
+            for i in range(1, n+1):
+                print "[%2d ]: %s" %(i, cons[i-1])
+
+            while True:
+                choice = raw_input('I found %d servers in server.ini.'
+                                   'Which one do you want to remove? ' %n)
+                try:
+                    servers = [cons[int(choice)-1]]
+                    break
+                except:
+                    print "please input a number between 1 and %d" %n-1
+        else:
+            servers = servers.split(',')
+
+        self._remove_servers(servers)
+
+        if save:
+            env.config_object.save(env.conf_filename)
+            print 'changes were saved to server.ini'
+        else:
+            print 'changes were not saved to server.ini'
+            env.config_object.set_list(self.proxy_section,
+                                env.config_object.CONNECTIONS,
+                                cons)
+            env.config_object.set_list(self.proxy_section,
+                                env.config_object.INTERNAL_IPS,
+                                internal)
+
     def _setup_services(self):
         functions.execute_on_host('nginx.setup')
 
@@ -197,7 +270,7 @@ class LBServer(BaseServer):
 
 
     def get_context(self):
-        app_servers = env.config_object.get_list('app-server',
+        app_servers = env.config_object.get_list(self.proxy_section,
                                           env.config_object.INTERNAL_IPS)
         default = {
             'nginx' : { 'upstream_addresses' : app_servers }

@@ -28,12 +28,10 @@ class FirewallSetup(ContextTask):
 
         context['internal_interface'] = functions.execute_on_host('utils.get_interface', internal=True)
         context['external_interface'] = functions.execute_on_host('utils.get_interface', internal=False)
-        context['tcp_lines'] = TCPOptions().get_config_list(role,
-                                    env.config_object,
+        context['tcp_lines'] = TCPOptions(env.config_object).get_config_list(role,
                                     context['internal_interface'],
                                     context['external_interface'])
-        context['udp_lines'] = UDPOptions().get_config_list(role,
-                                    env.config_object,
+        context['udp_lines'] = UDPOptions(env.config_object).get_config_list(role,
                                     context['internal_interface'],
                                     context['external_interface'])
         return context

@@ -36,8 +36,7 @@ class Celeryd(base_celery.Celeryd):
         # we use supervisor to control gunicorn
         sudo('apt-get -y install supervisor')
         celery_conf = os.path.join(env.configs_path, "celery/supervisor_{0}.conf".format(self.name))
-        text = 'files = %s' % celery_conf
-        append(self.conf_file, text, use_sudo=True)
+        sudo('ln -sf {0} /etc/supervisor/conf.d/'.format(celery_conf))
 
     def _setup_rotate(self, path):
         text = [

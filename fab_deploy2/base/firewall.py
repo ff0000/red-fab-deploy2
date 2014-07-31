@@ -10,49 +10,63 @@ class TCPOptions(object):
     proto = 'tcp'
     group = 200
 
-    def get_line(self, port, interface=None, from_ip='any'):
+
+    def __init__(self, conf):
+        self.conf = conf
+        self.server_sections = set(self.conf.server_sections())
+
+    def get_line(self, port, interface=None, from_ip='any', section=None):
         return {
             'interface' : interface,
             'proto' : self.proto,
             'from_ip' : from_ip,
             'port' : port,
-            'group' : self.group
+            'group' : self.group,
+            'section': section
         }
 
-    def get_optional_list(self, section, conf, ports_option,
-                          allowed_option, ip_option, interface):
+    def get_optional_list(self, section, ports_option,
+                          allowed_option, ip_option, interface,
+                          enumerate_ips=True):
         lines = []
         # If we have restricted ports
-        restricted_ports = conf.get_list(section, ports_option)
+        restricted_ports = self.conf.get_list(section, ports_option)
         if restricted_ports:
-            # Get all the internals
-            ips = []
-            for section in conf.get_list(section, allowed_option):
-                ips.extend(conf.get_list(section, ip_option))
+            if enumerate_ips:
+                ips = []
+                for section in self.conf.get_list(section, allowed_option):
+                    ips.extend(self.conf.get_list(section, ip_option))
 
-            # Add a line for each port
-            for ip in ips:
-                ip = ip.split('@')[-1]
-                for port in restricted_ports:
-                    line = self.get_line(port, interface, ip)
-                    lines.append(line)
+                # Add a line for each port
+                for ip in ips:
+                    ip = ip.split('@')[-1]
+                    for port in restricted_ports:
+                        line = self.get_line(port, interface, ip, section=None)
+                        lines.append(line)
+            else:
+                for s in self.conf.get_list(section, allowed_option):
+                    if s in self.server_sections:
+                        for port in restricted_ports:
+                            line = self.get_line(port, interface=interface, from_ip=None, section=s)
+                            lines.append(line)
+
         return lines
 
-    def get_config_list(self, section, conf, internal, external):
+    def get_config_list(self, section, internal, external):
         txt = []
-        for port in conf.get_list(section, self.open_ports):
+        for port in self.conf.get_list(section, self.open_ports):
             txt.append(self.get_line(port))
 
-        txt.extend(self.get_optional_list(section, conf,
+        txt.extend(self.get_optional_list(section,
                                 self.internal_restricted_ports,
                                 self.allowed,
-                                conf.INTERNAL_IPS,
+                                self.conf.INTERNAL_IPS,
                                 internal))
 
-        txt.extend(self.get_optional_list(section, conf,
+        txt.extend(self.get_optional_list(section,
                                 self.external_restricted_ports,
                                 self.ex_allowed,
-                                conf.CONNECTIONS,
+                                self.conf.CONNECTIONS,
                                 external))
         return txt
 
