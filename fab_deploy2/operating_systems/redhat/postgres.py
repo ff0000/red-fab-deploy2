@@ -62,9 +62,5 @@ class Postgresql(base_postgres.Postgresql):
                                     text, use_sudo=True)
 
 
-class PGBouncerInstall(Task):
-    pass
-
 
 Postgresql().as_tasks()
-setup_pgbouncer = PGBouncerInstall()
