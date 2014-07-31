@@ -12,6 +12,12 @@ from api import get_ec2_connection
 from boto.ec2.elb.healthcheck import HealthCheck
 
 class AmazonAppServerMixin(object):
+    """
+    App server that tells nginx to allow proxy for headers from
+    all internal ips because we don't know
+    what the amazon lb will be
+    """
+
     def get_context(self):
         context = base_servers.BaseServer.get_context(self)
         default = {

@@ -13,6 +13,9 @@ fab_deploy2
 .. automodule:: fab_deploy2.deploy
     :members:
 
+.. automodule:: fab_deploy2.local
+    :members:
+
 .. automodule:: fab_deploy2.tasks
     :members:
 
@@ -28,35 +31,41 @@ fab_deploy.joyent
 .. automodule:: fab_deploy2.joyent.api
 	:members:
 
-.. automodule:: fab_deploy2.joyent.celery
+fab_deploy.amazon
+=================
+
+Allows centos and ubuntu servers.
+
+.. automodule:: fab_deploy2.amazon.api
 	:members:
 
-.. automodule:: fab_deploy2.joyent.firewall
+.. automodule:: fab_deploy2.amazon.manage
 	:members:
 
-.. automodule:: fab_deploy2.joyent.gunicorn
+.. automodule:: fab_deploy2.amazon.servers
 	:members:
 
-.. automodule:: fab_deploy2.joyent.nginx
+.. automodule:: fab_deploy2.amazon.utils
 	:members:
 
-.. automodule:: fab_deploy2.joyent.postgres
+fab_deploy.rackspace
+=================
+
+No api commands have been implemented yet. Allows centos and ubuntu servers.
+
+.. automodule:: fab_deploy2.rackspace.servers
 	:members:
 
-.. automodule:: fab_deploy2.joyent.python
+
+fab_deploy.joyent
+=================
+
+.. automodule:: fab_deploy2.joyent.api
 	:members:
 
-.. automodule:: fab_deploy2.joyent.redis
+.. automodule:: fab_deploy2.joyent.smartos.backups
 	:members:
 
-.. automodule:: fab_deploy2.joyent.servers
-	:members:
-
-.. automodule:: fab_deploy2.joyent.snmp
-	:members:
-
-.. automodule:: fab_deploy2.joyent.utils
-	:members:
 
 fab_deploy.local
 ================

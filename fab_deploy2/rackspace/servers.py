@@ -6,6 +6,17 @@ from fab_deploy2 import functions
 from fab_deploy2.base import servers as base_servers
 
 class RSServerMixin(object):
+    """
+    Mixin used for all rackspace servers.
+
+    Turns off snmp and on firewall.
+    Mounts the ext3 extension on installation.
+
+    Since rackspace likes you to do everything as root
+    will a password. Does not do our normal ssh secuirty
+    changes.
+    """
+
     setup_snmp = False
     setup_firewall = True
 
@@ -48,6 +59,12 @@ class RSServerMixin(object):
             self._mount_device(device, mount_point)
 
 class RSAppServerMixin(RSServerMixin):
+    """
+    App server that tells nginx to allow proxy for headers from
+    all internal ips because we don't know
+    what the rackspace lb will be
+    """
+
     def get_context(self):
         context = base_servers.BaseServer.get_context(self)
         default = {
