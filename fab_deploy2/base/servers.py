@@ -91,9 +91,13 @@ class BaseServer(MultiTask):
             functions.execute_on_host('snmp.setup')
 
     def _secure_ssh(self):
-        # Change disable root and password
+        # Change disable password
         # logins in /etc/ssh/sshd_config
-        sudo('sed -ie "s/^PermitRootLogin.*/PermitRootLogin no/g" /etc/ssh/sshd_config')
+
+        #disable root logins if not running as root
+        user = run('whoami')
+        if user != "root":
+            sudo('sed -ie "s/^PermitRootLogin.*/PermitRootLogin no/g" /etc/ssh/sshd_config')
         sudo('sed -ie "s/^PasswordAuthentication.*/PasswordAuthentication no/g" /etc/ssh/sshd_config')
         self._ssh_restart()
 
