@@ -38,6 +38,16 @@ class RedisInstall(MultiTask):
     def stop(self):
         raise NotImplementedError()
 
+    @task_method
+    def promote_slave(self):
+        """
+        Promote given slave to master.
+        """
+        config = list(self.config)
+        config.append(('^slaveof', "slaveof no one"))
+        self._setup_config(config)
+
+
     def _install_package(self):
         raise NotImplementedError()
 
