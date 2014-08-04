@@ -52,7 +52,7 @@ class Postgresql(ServiceContextTask):
     }
 
     @task_method
-    def setup_backups(self, path=None):
+    def setup_backups(self, path=None, **kwargs):
         if not path:
             path = self.backup_path
 
