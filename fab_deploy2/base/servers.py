@@ -1,12 +1,12 @@
 import sys, os
-from fabric.api import task, run, sudo, env, local, execute, settings
+from fabric.api import task, run, sudo, env, local, settings
 from fabric.tasks import Task
 from fabric.contrib.files import append, sed, exists, contains
 from fabric.operations import get, put
 from fabric.context_managers import cd
 
 from fab_deploy2 import functions
-from fab_deploy2.tasks import MultiTask, task_method
+from fab_deploy2.tasks import MultiTask, task_method, PlatformCallableTask
 
 class BaseServer(MultiTask):
     """
@@ -23,6 +23,11 @@ class BaseServer(MultiTask):
     serial = True
     setup_firewall = True
     setup_snmp = True
+    platform = None
+
+    def _task_for_method(self, method):
+        return PlatformCallableTask(method, self.platform, *method._task_info['args'],
+                                    **method._task_info['kwargs'])
 
     def _get_module_obj(self, parent=None, name=None, depth=None):
         if not depth:
@@ -111,7 +116,7 @@ class BaseServer(MultiTask):
             for section in env.config_object.server_sections():
                 if self.config_section in env.config_object.get_list(section,
                             env.config_object.ALLOWED_SECTIONS) and env.roledefs[section]:
-                    execute('firewall.setup', hosts=env.roledefs[section])
+                    functions.execute_on_platform('firewall.setup', hosts=env.roledefs[section])
 
     def get_context(self):
         """
@@ -376,7 +381,7 @@ class DBSlaveServer(DBServer):
         functions.execute_on_host('postgres.slave_setup', master=master)
 
     def _do_promote(self, candidate):
-        execute('postgres.promote_slave', hosts=[candidate])
+        functions.execute_on_platform('postgres.promote_slave', hosts=[candidate])
 
     def _remove_pair(self, section, host_string):
         if env.config_object.has_section(self.config_section):

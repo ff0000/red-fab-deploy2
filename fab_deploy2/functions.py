@@ -6,6 +6,7 @@ import sys
 
 from fabric.api import env, put, execute, run, sudo
 from fabric.task_utils import crawl
+from fabric import state
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -104,11 +105,19 @@ def merge_context(context, defaults):
 
 def execute_on_host(*args, **kwargs):
     kwargs['hosts'] = [env.host_string]
-    r = execute(*args, **kwargs)
+    r = execute_on_platform(*args, **kwargs)
     if env.host_string in r:
         return r[env.host_string]
     else:
         return r
+
+def execute_on_platform(task_name, *args, **kwargs):
+    if env.get('current_platform') and env.current_platform != env.platform:
+        name = '{0}.{1}'.format(env.current_platform, task_name)
+        if get_task_instance(name):
+            task_name = name
+
+    return execute(task_name, *args, **kwargs)
 
 def get_context_from_role(key):
     value = env.context.get('newrelic')
@@ -141,7 +150,8 @@ def get_context(context=None):
         'base_remote_path' : env.base_remote_path,
         'configs_path' : env.configs_path,
         'config' : env.config_object,
-        'code_path' : os.path.join(env.base_remote_path, 'active')
+        'code_path' : os.path.join(env.base_remote_path, 'active'),
+        'project_name': env.project_name
     })
     return context
 
@@ -171,7 +181,7 @@ def get_valid_host_from_conf(section):
 def template_to_string(filename, context=None):
     local_path = os.path.join(env.deploy_path, 'templates')
     platform = os.path.join(env.configs_dir, 'templates',
-                            env.get('platform', 'base'))
+                        env.get('current_platform', 'base'))
     base = os.path.join(env.configs_dir, 'templates', 'base')
     all_templates = os.path.join(env.configs_dir, 'templates')
     search_paths = (local_path, platform, base, all_templates)

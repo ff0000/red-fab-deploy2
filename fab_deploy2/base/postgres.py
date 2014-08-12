@@ -1,7 +1,7 @@
 import os
 import sys
 
-from fabric.api import run, sudo, env, local, hide, settings, execute
+from fabric.api import run, sudo, env, local, hide, settings
 from fabric.contrib.files import append, sed, exists, contains
 from fabric.context_managers import prefix
 from fabric.operations import get, put
@@ -9,6 +9,7 @@ from fabric.context_managers import cd
 
 from fabric.tasks import Task
 
+from fab_deploy2 import functions
 from fab_deploy2.functions import random_password
 from fab_deploy2 import functions
 from fab_deploy2.tasks import ServiceContextTask, task_method
@@ -341,7 +342,7 @@ class Postgresql(ServiceContextTask):
             return None
 
     def _prep_slave(self, master, full_sync=True):
-        results = execute('utils.get_ip', None, hosts=[master])
+        results = functions.execute_on_platform('utils.get_ip', None, hosts=[master])
         master_ip = results[master]
         assert master_ip
 
@@ -356,7 +357,7 @@ class Postgresql(ServiceContextTask):
 
     def _sync_from_master(self, master):
         self._ssh_key_exchange(master, env.host_string)
-        results = execute('utils.get_ip', None)
+        results = functions.execute_on_platform('utils.get_ip', None)
         slave_ip = results[env.host_string]
         assert slave_ip
 
@@ -415,7 +416,7 @@ class Postgresql(ServiceContextTask):
             sudo('chown {0}:{1} {2}'.format(self.user, self.group, authorized_keys))
 
             append(authorized_keys, pub_key, use_sudo=True)
-            results = execute('utils.get_ip', None, hosts=[master])
+            results = functions.execute_on_platform('utils.get_ip', None, hosts=[master])
             master_ip = results[master]
             sudo('ssh-keyscan -H {0} >> {1}'.format(master_ip, known))
             sudo('chown {0}:{1} {2}'.format(self.user, self.group, known))

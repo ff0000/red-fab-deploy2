@@ -1,9 +1,10 @@
 import os
 
-from fabric.api import run, sudo, env, local, execute
+from fabric.api import run, sudo, env, local
 from fabric.tasks import Task
 
 from fab_deploy2.tasks import MultiTask, task_method
+from fab_deploy2 import functions
 
 class RedisInstall(MultiTask):
     """
@@ -22,7 +23,7 @@ class RedisInstall(MultiTask):
         self._install_package()
         config = list(self.config)
         if master:
-            results = execute('utils.get_ip', None, hosts=[master])
+            results = functions.execute_on_platform('utils.get_ip', None, hosts=[master])
             master_ip = results[master]
             config.append(('# slaveof', "slaveof "))
             config.append(('^slaveof', "slaveof {0} {1}".format(

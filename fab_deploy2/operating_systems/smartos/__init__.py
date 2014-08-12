@@ -1,3 +1,6 @@
 from fabric.api import env
 
-env.platform = 'joyent'
+platform = 'joyent'
+
+if not env.get('platform'):
+    env.platform = 'joyent'

@@ -9,6 +9,17 @@ from fabric.api import env, settings
 from . import functions
 
 
+class PlatformCallableTask(WrappedCallableTask):
+    def __init__(self, callable, platform, *args, **kwargs):
+        self.env_kwargs = {}
+        if platform:
+            self.env_kwargs = { 'current_platform' : platform }
+        super(PlatformCallableTask, self).__init__(callable, *args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        with settings(**self.env_kwargs):
+            return super(PlatformCallableTask, self).run(*args, **kwargs)
+
 def task_method(*args, **kwargs):
     """
     Decorator declaring the wrapped method to be task.
@@ -108,7 +119,7 @@ class MultiTask(object):
 class _ContextMixin(object):
 
     def _value_for_default(self, key):
-        if env.task_context.get(key):
+        if hasattr(env, 'task_context') and env.task_context.get(key):
             return env.task_context.get(key)
 
         context_dict = env.context.get(self.namespace, {})

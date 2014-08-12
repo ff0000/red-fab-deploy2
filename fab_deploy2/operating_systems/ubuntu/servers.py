@@ -1,11 +1,13 @@
 from fabric.api import sudo
 
 from fab_deploy2.base import servers as base_servers
+from . import platform as base_platform
 
 class UbuntuMixin(object):
     serial = True
     setup_firewall = False
     setup_snmp = False
+    platform = base_platform
 
     def _ssh_restart(self):
         sudo('apt-get update')

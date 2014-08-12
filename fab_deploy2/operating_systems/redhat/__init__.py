@@ -1,3 +1,6 @@
 from fabric.api import env
 
-env.platform = 'redhat'
+platform = 'redhat'
+
+if not env.get('platform'):
+    env.platform = 'redhat'

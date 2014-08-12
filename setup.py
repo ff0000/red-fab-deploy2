@@ -53,6 +53,7 @@ setup(
         'fab_deploy2.operating_systems.smartos',
         'fab_deploy2.joyent',
         'fab_deploy2.joyent.smartos',
+        'fab_deploy2.joyent.ubuntu',
         'fab_deploy2.amazon',
         'fab_deploy2.amazon.ubuntu',
         'fab_deploy2.amazon.redhat',

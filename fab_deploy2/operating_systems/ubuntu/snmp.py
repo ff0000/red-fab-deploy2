@@ -4,7 +4,7 @@ from fab_deploy2 import functions
 from fab_deploy2.config import CustomConfig
 from fab_deploy2.base import snmp as base_snmp
 
-from fabric.api import run, sudo, env, put, execute, local
+from fabric.api import run, sudo, env, put, local
 from fabric.tasks import Task
 
 class SNMPSetup(base_snmp.SNMPSetup):

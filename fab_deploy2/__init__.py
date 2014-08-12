@@ -52,6 +52,10 @@ def setup_env(project_path):
     env.configs_path = '/srv/configs/'
     env.track_static = 'project/source'
 
+
+    if not env.get('current_platform'):
+        env.current_platform = env.platform
+
     # Read the config and store it in env
     config = CustomConfig()
     env.conf_filename = os.path.abspath(os.path.join(project_path, 'deploy', 'servers.ini'))

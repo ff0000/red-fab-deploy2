@@ -2,9 +2,10 @@ from fabric.api import run, sudo
 from fabric.contrib.files import append
 
 from fab_deploy2.base import servers as base_servers
-
+from . import platform as base_platform
 
 class JoyentMixin(object):
+    platform = base_platform
 
     def _set_profile(self):
         pass

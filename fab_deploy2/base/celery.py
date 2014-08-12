@@ -1,6 +1,6 @@
 import os
 
-from fabric.api import run, sudo, env, execute
+from fabric.api import run, sudo, env
 from fabric.tasks import Task
 
 from fab_deploy2 import functions
