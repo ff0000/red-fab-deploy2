@@ -1,6 +1,6 @@
 import os
 {% block settings %}
-pythonpath = "{{ code_path }}/project/"
+pythonpath = "{{ code_path }}{{ gunicorn.project_path }}"
 bind = "{{ gunicorn.listen_address }}"
 
 # Make sure to tune
