@@ -11,6 +11,7 @@ class Haproxy(base_haproxy.Haproxy):
     """
     Install nginx
     """
+    rsyslog_conf = "/opt/local/etc/rsyslog.conf"
 
     def _install_package(self):
         sudo("pkg_add haproxy")
@@ -26,7 +27,7 @@ class Haproxy(base_haproxy.Haproxy):
 
         update_conf = False
         with settings(warn_only=True):
-            result = run("grep haproxy /opt/local/etc/rsyslog.conf")
+            result = run("grep haproxy {0}".format(self.rsyslog_conf))
             if result.return_code:
                 update_conf = True
 
@@ -38,11 +39,11 @@ class Haproxy(base_haproxy.Haproxy):
                 "local1.* -{0}".format(self.logfile),
                 "& ~"
             ]
-            start = int(run('grep -n "ModLoad imsolaris" /opt/local/etc/rsyslog.conf | cut -f1 -d:'))
+            start = int(run('grep -n "ModLoad imsolaris" {0} | cut -f1 -d:'.format(self.rsyslog_conf)))
 
             for line in lines:
                 start = start + 1
-                sudo("sed -i '{0}i{1}' /opt/local/etc/rsyslog.conf".format(start, line))
+                sudo("sed -i '{0}i{1}' {2}".format(start, line, self.rsyslog_conf))
             sudo('logadm -C 3 -p1d -c -w {0} -z 1'.format(self.logfile))
 
             functions.execute_on_host('utils.start_or_restart', name='rsyslog',

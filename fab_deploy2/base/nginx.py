@@ -46,7 +46,8 @@ class Nginx(ServiceContextTask):
         'upstream_addresses' : ['127.0.0.1'],
         'upstream_port' : '8000',
         'template' : 'nginx/nginx.conf',
-        'hosts': []
+        'hosts': [],
+        'status': True,
     }
 
     @task_method
@@ -55,6 +56,7 @@ class Nginx(ServiceContextTask):
         self._setup_logging()
         self._setup_dirs()
         self._setup_config(template=template, directory=directory)
+        functions.execute_if_exists('collectd.install_plugin', 'nginx')
 
     @task_method
     def update(self, template=None, directory=None):

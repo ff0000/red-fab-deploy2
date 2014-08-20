@@ -24,6 +24,8 @@ class BaseServer(MultiTask):
     setup_firewall = True
     setup_snmp = True
     platform = None
+    setup_collectd = True
+
 
     def _task_for_method(self, method):
         return PlatformCallableTask(method, self.platform, *method._task_info['args'],
@@ -90,6 +92,26 @@ class BaseServer(MultiTask):
 
     def _save_config(self):
         env.config_object.save(env.conf_filename)
+
+    def _setup_monitoring(self, config_section):
+        if self.setup_collectd:
+            self._add_collectd(self.config_section)
+        elif self.setup_snmp:
+            self._add_snmp(self.config_section)
+
+    def _start_monitoring(self):
+        if self.setup_collectd:
+            functions.execute_on_host('collectd.start')
+
+    def _stop_monitoring(self):
+        if self.setup_collectd:
+            with settings(warn_only=True):
+                r = run('ps xa | grep collectd')
+                if r:
+                    functions.execute_on_host('collectd.stop')
+
+    def _add_collectd(self, config_section):
+        functions.execute_on_host('collectd.setup')
 
     def _add_snmp(self, config_section):
         if self.setup_snmp:
@@ -159,13 +181,15 @@ class LBServer(BaseServer):
         self._update_config(self.config_section)
 
         self._install_packages()
+        self._stop_monitoring()
+        self._setup_monitoring(self.config_section)
         self._setup_services()
-        self._add_snmp(self.config_section)
         self._update_firewalls()
         self._save_config()
 
         self._update_server()
         self._restart_services()
+        self._start_monitoring()
 
     @task_method
     def update(self, branch=None, update_configs=True):
@@ -282,7 +306,7 @@ class LBServer(BaseServer):
         app_servers = env.config_object.get_list(self.proxy_section,
                                           env.config_object.INTERNAL_IPS)
         default = {
-            'nginx' : { 'upstream_addresses' : app_servers }
+            'nginx' : { 'upstream_addresses' : app_servers },
         }
         context = super(LBServer, self).get_context()
         return functions.merge_context(context, default)
@@ -329,7 +353,7 @@ class AppServer(LBServer):
                                           env.config_object.INTERNAL_IPS)
         defaults = {
             'nginx' : { 'lbs' : lbs },
-            'gunicorn' : { 'listen_address' : '0.0.0.0:8000' }
+            'gunicorn' : { 'listen_address' : '0.0.0.0:8000' },
         }
 
         context = super(LBServer, self).get_context()
@@ -351,10 +375,12 @@ class DBServer(BaseServer):
         self._set_profile()
 
         self._update_config(self.config_section)
-        self._add_snmp(self.config_section)
+        self._stop_monitoring()
+        self._setup_monitoring(self.config_section)
         self._update_firewalls()
         self._setup_db()
         self._save_config()
+        self._start_monitoring()
 
     @task_method
     def update(self):
@@ -471,6 +497,7 @@ class DevServer(AppServer):
     name = 'dev_server'
     config_section = 'dev-server'
     git_branch = 'develop'
+    setup_collectd = False
 
     def _setup_database(self):
         functions.execute_on_host('postgres.master_setup',

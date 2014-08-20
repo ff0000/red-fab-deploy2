@@ -41,13 +41,19 @@ class Haproxy(ServiceContextTask):
         'remote_config_path' : '/opt/local/etc/haproxy.cfg',
         'loghost' : '127.0.0.1',
         'loglevel' : 'notice',
-        'logfile' : '/var/log/haproxy.log'
+        'logfile' : '/var/log/haproxy.log',
+        'loglocal' : 'local1',
+        'stats_socket' : '/var/run/haproxy-stats.sock',
+        'stats_timeout' : '1m',
+        'rsyslog_conf' : '/opt/local/etc/rsyslog.conf',
+
     }
 
     @task_method
     def setup(self, template=None):
         self._install_package()
         self._setup_config(template=template)
+        functions.execute_if_exists('collectd.install_plugin', 'haproxy')
 
     @task_method
     def update(self, template=None):

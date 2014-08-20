@@ -30,6 +30,7 @@ class RedisInstall(MultiTask):
                                                     master_ip, port)))
 
         self._setup_config(config)
+        functions.execute_if_exists('collectd.install_plugin', 'redis')
 
     @task_method
     def start(self):

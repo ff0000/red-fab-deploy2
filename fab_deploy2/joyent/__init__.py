@@ -15,5 +15,6 @@ from fab_deploy2.operating_systems.smartos import servers
 from fab_deploy2.operating_systems.smartos import snmp
 from fab_deploy2.operating_systems.smartos import utils
 from fab_deploy2.operating_systems.smartos import firewall
+from fab_deploy2.operating_systems.smartos import collectd
 
 from fab_deploy2.joyent.smartos import backups

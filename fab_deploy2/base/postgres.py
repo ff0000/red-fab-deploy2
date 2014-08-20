@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 from fabric.api import run, sudo, env, local, hide, settings
 from fabric.contrib.files import append, sed, exists, contains
@@ -84,6 +85,7 @@ class Postgresql(ServiceContextTask):
         self._setup_ssh_key()
         self._create_user()
         self._create_replicator()
+        self._add_monitoring()
 
     @task_method
     def start(self):
@@ -106,6 +108,7 @@ class Postgresql(ServiceContextTask):
         self._setup_archive_dir()
 
         self._start_db_server()
+        self._add_monitoring()
 
     @task_method
     def promote_slave(self):
@@ -157,6 +160,9 @@ class Postgresql(ServiceContextTask):
 
         db_name = db_name.replace(' ', '')
         run('sudo su {0} -c "createdb -O {1} -E UNICODE {2}"'.format(self.user, user, db_name))
+
+    def _add_monitoring(self):
+        functions.execute_if_exists('collectd.install_plugin', 'postgresql')
 
     def _install_package(self):
         raise NotImplementedError()
@@ -285,6 +291,7 @@ class Postgresql(ServiceContextTask):
         return user
 
     def _create_user(self, user=None):
+        time.sleep(2)
         user = self._get_username(user=user)
         db_out = run('echo "select usename from pg_shadow where usename=\'%s\'" |'
                      'sudo su %s -c psql' % (user, self.user))

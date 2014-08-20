@@ -61,7 +61,7 @@ setup(
         'fab_deploy2.rackspace.ubuntu',
         'fab_deploy2.rackspace.redhat',
 		],
-	version = '0.2.1',
+	version = '0.2.2',
     author='RED Interactive Agency',
     author_email='geeks@ff0000.com',
     include_package_data=True,
