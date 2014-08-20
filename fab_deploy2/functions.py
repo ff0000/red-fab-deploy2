@@ -111,6 +111,10 @@ def execute_on_host(*args, **kwargs):
     else:
         return r
 
+def execute_if_exists(task_name, *args, **kwargs):
+    if get_task_instance(task_name):
+        return execute_on_host(task_name, *args, **kwargs)
+
 def execute_on_platform(task_name, *args, **kwargs):
     if env.get('current_platform') and env.current_platform != env.platform:
         name = '{0}.{1}'.format(env.current_platform, task_name)
@@ -139,8 +143,9 @@ def get_role_context(role):
     if not role in env._role_cache:
         task_name = "servers.{0}.context".format(
                             env.role_name_map.get(role))
-        env._role_cache[role] = execute_on_host(task_name)
-    return env._role_cache.get(role)
+        if get_task_instance(task_name):
+            env._role_cache[role] = execute_on_host(task_name)
+    return env._role_cache.get(role, {})
 
 def get_context(context=None):
     if not context:
@@ -192,10 +197,13 @@ def template_to_string(filename, context=None):
     return template
 
 def render_template(filename, remote_path=None, context=None, use_sudo=False):
-    sudo('mkdir -p {0}'.format(env.base_remote_path))
-    sudo('mkdir -p {0}'.format(env.configs_path))
-    sudo('chown {0} {1}'.format(env.user, env.configs_path))
-    sudo('chown {0} {1}'.format(env.user, env.base_remote_path))
+    key = 'tdm{0}'.format(env.host_string)
+    if not env.get(key):
+        sudo('mkdir -p {0}'.format(env.base_remote_path))
+        sudo('mkdir -p {0}'.format(env.configs_path))
+        sudo('chown {0} {1}'.format(env.user, env.configs_path))
+        sudo('chown {0} {1}'.format(env.user, env.base_remote_path))
+        env[key] = True
 
     if not remote_path:
         remote_path = env.configs_path
@@ -209,8 +217,13 @@ def render_template(filename, remote_path=None, context=None, use_sudo=False):
     else:
         dest_path = remote_path
 
-    # Nake sure dir exists
-    run('mkdir -p {0}'.format(os.path.dirname(dest_path)))
+
+    bkey = '{0}{1}'.format(env.host_string, os.path.dirname(dest_path))
+    if not env.get(bkey):
+        # Nake sure dir exists
+        run('mkdir -p {0}'.format(os.path.dirname(dest_path)))
+        env[bkey] = True
+
 
     # Render template
     template = template_to_string(filename, context=context)
