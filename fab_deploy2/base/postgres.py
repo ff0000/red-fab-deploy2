@@ -400,6 +400,12 @@ class Postgresql(ServiceContextTask):
                                   context=context, use_sudo=True)
         sudo('chown {0}:{1} {2}'.format(self.user, self.group, recovery_conf))
 
+    def _trust_key(self, addr, known):
+        with settings(warn_only=True):
+            result = sudo('ssh-keyscan -H {0} >> {1}'.format(addr, known))
+            if result.return_code != 0:
+                result = sudo('ssh-keyscan {0} >> {1}'.format(addr, known))
+
     def _ssh_key_exchange(self, master, slave):
         """
         copy ssh key(pub) from master to slave, so that master can access slave
@@ -412,7 +418,7 @@ class Postgresql(ServiceContextTask):
             rsa_pub = os.path.join(ssh_dir, 'id_rsa.pub')
             pub_key = sudo('cat %s' %rsa_pub)
             slave_addr = slave.split('@')[1]
-            sudo('ssh-keyscan -H {0} >> {1}'.format(slave_addr, known))
+            self._trust_key(slave_addr, known)
             sudo('chown {0}:{1} {2}'.format(self.user, self.group, known))
 
         with settings(host_string=slave):
@@ -425,5 +431,5 @@ class Postgresql(ServiceContextTask):
             append(authorized_keys, pub_key, use_sudo=True)
             results = functions.execute_on_platform('utils.get_ip', None, hosts=[master])
             master_ip = results[master]
-            sudo('ssh-keyscan -H {0} >> {1}'.format(master_ip, known))
+            self._trust_key(master_ip, known)
             sudo('chown {0}:{1} {2}'.format(self.user, self.group, known))
