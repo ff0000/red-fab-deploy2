@@ -26,6 +26,7 @@ class DeployCode(Task):
     name = 'deploy_code'
     cache_prefix = 'c-'
     max_keep = 5
+    code_static_dir = 'collected-static'
 
     def _purge(self, static_dir):
         """
@@ -58,7 +59,7 @@ class DeployCode(Task):
         static_hash = open(os.path.join(env.build_dir, STATIC_VERSION)).read()
         assert static_hash
 
-        code_static_dir = os.path.join(code_dir, 'collected-static')
+        code_static_dir = os.path.join(code_dir, self.code_static_dir)
 
         local('rsync -rptov --checksum --progress --delete-after {0}/ {1}:{2}updating'.format(
             env.build_dir, env.host_string, env.base_remote_path))
@@ -155,6 +156,8 @@ class PrepDeploy(Task):
         # restore the local gitkeep file in collected-static
         local('touch {0}'.format(os.path.join(
             env.project_path, 'collected-static', '.gitkeep')))
+        local('cp -r {0}/collected-static {1}/'.format(env.project_path,
+                                                    env.build_dir))
 
     def _restore_working_dir(self):
         with settings(warn_only=True):
@@ -179,8 +182,6 @@ class PrepDeploy(Task):
         self._clean_working_dir(branch)
         execute('local.git.build', branch=branch, hosts=['none'])
         self._prep_static()
-        local('cp -r {0}/collected-static {1}/'.format(env.project_path,
-                                                    env.build_dir))
 
         self._record_spots(branch)
         self._restore_working_dir()
