@@ -124,7 +124,7 @@ def execute_on_platform(task_name, *args, **kwargs):
     return execute(task_name, *args, **kwargs)
 
 def get_context_from_role(key):
-    value = env.context.get('newrelic')
+    value = env.context.get(key)
     role = env.host_roles.get(env.host_string)
     if role:
         role_dict = get_role_context(role)
@@ -151,12 +151,18 @@ def get_context(context=None):
     if not context:
         context = {}
 
+    for r in env.get('global_context_keys', []):
+        value = get_context_from_role(r)
+        if value:
+            context[r] = value
+
+    get_context_from_role
     context.update({
         'base_remote_path' : env.base_remote_path,
         'configs_path' : env.configs_path,
         'config' : env.config_object,
         'code_path' : os.path.join(env.base_remote_path, 'active'),
-        'project_name': env.project_name
+        'project_name': env.project_name,
     })
     return context
 
