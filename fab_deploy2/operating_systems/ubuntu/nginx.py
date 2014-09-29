@@ -13,6 +13,7 @@ class Nginx(base_nginx.Nginx):
 
     def _install_package(self):
         sudo("apt-get -y install nginx")
+        sudo('update-rc.d nginx defaults')
 
     def _setup_logging(self):
         # Done by package

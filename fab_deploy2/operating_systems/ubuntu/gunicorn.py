@@ -26,6 +26,7 @@ class Gunicorn(base_gunicorn.Gunicorn):
 
     def _setup_service(self, env_value=None):
         sudo('apt-get -y install supervisor')
+        sudo('update-rc.d supervisor defaults')
         gunicorn_conf = os.path.join(env.configs_path, "gunicorn/supervisor_{0}.conf".format(self.gunicorn_name))
         sudo('ln -sf {0} /etc/supervisor/conf.d/'.format(gunicorn_conf))
 

@@ -44,6 +44,7 @@ class Postgresql(base_postgres.Postgresql):
         self._override_pgdata()
         if not exists(postgres_conf, use_sudo=True):
             sudo("service postgresql-%s initdb" % self.db_version)
+        sudo('chkconfig postgresql-%s on' % self.db_version)
 
     def _stop_db_server(self):
         sudo('service postgresql-%s stop' % self.db_version)

@@ -16,6 +16,7 @@ class Redis(base_redis.RedisInstall):
 
     def _install_package(self):
         sudo('apt-get -y install redis-server')
+        sudo('update-rc.d redis-server defaults')
 
     @task_method
     def start(self):

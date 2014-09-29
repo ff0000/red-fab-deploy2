@@ -22,6 +22,7 @@ class SNMPSetup(base_snmp.SNMPSetup):
         sudo("apt-get install -y snmp-mibs-downloader")
         sudo('echo "" > /etc/snmp/snmp.conf')
         sudo('service snmpd start')
+        sudo('update-rc.d snmpd defaults')
 
     def _restart_service(self):
         sudo('service snmpd restart')

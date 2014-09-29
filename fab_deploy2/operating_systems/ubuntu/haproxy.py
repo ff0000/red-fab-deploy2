@@ -18,6 +18,7 @@ class Haproxy(base_haproxy.Haproxy):
 
     def _install_package(self):
         sudo("apt-get -y install haproxy")
+        sudo('update-rc.d haproxy defaults')
         append("/etc/default/haproxy", "ENABLED=1", use_sudo=True)
 
     def _setup_logging(self):

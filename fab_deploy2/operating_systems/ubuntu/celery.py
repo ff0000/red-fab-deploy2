@@ -35,6 +35,7 @@ class Celeryd(base_celery.Celeryd):
     def _setup_service(self, env_value=None):
         # we use supervisor to control gunicorn
         sudo('apt-get -y install supervisor')
+        sudo('update-rc.d supervisor defaults')
         celery_conf = os.path.join(env.configs_path, "celery/supervisor_{0}.conf".format(self.name))
         sudo('ln -sf {0} /etc/supervisor/conf.d/'.format(celery_conf))
 

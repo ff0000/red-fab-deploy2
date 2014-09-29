@@ -17,6 +17,7 @@ class Redis(base_redis.RedisInstall):
     def _install_package(self):
         sudo('yum -y install epel-release')
         sudo('yum -y install redis')
+        sudo('chkconfig redis on')
 
     @task_method
     def start(self):

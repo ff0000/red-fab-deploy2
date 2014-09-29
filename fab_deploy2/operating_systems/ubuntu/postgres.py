@@ -36,6 +36,7 @@ class Postgresql(base_postgres.Postgresql):
     def _install_package(self):
         sudo("apt-get -y install postgresql")
         sudo("apt-get -y install postgresql-contrib")
+        sudo('update-rc.d postgresql defaults')
 
     def _stop_db_server(self):
         sudo('service postgresql stop')
