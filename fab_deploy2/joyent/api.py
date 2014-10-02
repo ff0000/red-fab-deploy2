@@ -102,8 +102,10 @@ class New(Task):
 
         dataset = kwargs.get('data_set', default_dataset)
         datasets = sdc.datasets(search=dataset)
+        datasets = sorted(datasets, key=lambda k: k['urn'])
+
         if datasets:
-            dataset_id = datasets[0]['id']
+            dataset_id = datasets[-1]['id']
         else:
             print "couldn't find a dataset %s. Here is what we found." % dataset
             print datasets
