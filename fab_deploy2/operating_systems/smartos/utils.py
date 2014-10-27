@@ -1,5 +1,5 @@
 import random
-from fabric.api import task, run
+from fabric.api import task, run, sudo
 from fabric.context_managers import settings
 
 from fab_deploy2 import functions
@@ -50,3 +50,14 @@ def start_or_restart(name, hosts=[]):
             run('svcadm enable {0}'.format(name))
         else:
             run('svcadm restart {0}'.format(name))
+
+
+@task
+def install_package(package_name, update=False, remote=None):
+    with settings(warn_only=True):
+        installed = run('pkg_info -E {0}'.format(package_name))
+
+    if installed.return_code != 0:
+        sudo('pkg_add {0}'.format(package_name))
+        return True
+    return False

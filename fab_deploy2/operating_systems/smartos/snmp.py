@@ -17,7 +17,8 @@ class SNMPSetup(base_snmp.SNMPSetup):
 
     def _add_package(self):
         sudo("mkdir -p /var/net-snmp/mib_indexes")
-        sudo("pkg_add net-snmp")
+        functions.execute_on_host('utils.install_package',
+                                    package_name='net-snmp')
         run('svcadm enable snmp')
 
     def _restart_service(self):

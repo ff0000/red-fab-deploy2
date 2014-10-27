@@ -17,10 +17,6 @@ class AppMixin(UbuntuMixin):
     packages = ['python-psycopg2', 'python-setuptools', 'python-imaging',
                 'python-pip']
 
-    def _install_packages(self):
-        for package in self.packages:
-            sudo('apt-get -y install  %s' % package)
-
 class AppServer(AppMixin, base_servers.AppServer):
 
     def _modify_others(self):

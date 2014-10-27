@@ -12,8 +12,9 @@ class Nginx(base_nginx.Nginx):
     remote_config_path = '/etc/nginx/nginx.conf'
 
     def _install_package(self):
-        sudo("apt-get -y install nginx")
-        sudo('update-rc.d nginx defaults')
+        installed = functions.execute_on_host('utils.install_package', package_name='nginx')
+        if installed:
+            sudo('update-rc.d nginx defaults')
 
     def _setup_logging(self):
         # Done by package

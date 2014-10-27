@@ -2,6 +2,8 @@ from fabric.api import run, sudo
 from fabric.contrib.files import append
 
 from fab_deploy2.base import servers as base_servers
+from fab_deploy2 import functions
+
 from . import platform as base_platform
 
 class JoyentMixin(object):
@@ -23,7 +25,8 @@ class AppMixin(JoyentMixin):
 
     def _install_packages(self):
         for package in self.packages:
-            sudo('pkg_add %s' % package)
+            functions.execute_on_host('utils.install_package',
+                                        package_name=package)
         sudo('easy_install-2.7 pip')
 
 

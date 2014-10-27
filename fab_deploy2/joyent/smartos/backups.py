@@ -38,11 +38,14 @@ class Backups(base_backups.Backups):
     def add_packages(self):
         # Makes no sense, but their package doesn't install the bin
         with settings(warn_only=True):
-            sudo('pkg_add sdc-manta')
-            sudo('pkg_add py27-gdbm')
+            functions.execute_on_host('utils.install_package',
+                                        package_name='sdc-manta')
+            functions.execute_on_host('utils.install_package',
+                                        package_name='py27-gdbm')
             result = run('which mls')
             if not result.succeeded:
-                sudo('pkg_add scmgit')
+                functions.execute_on_host('utils.install_package',
+                                        package_name='scmgit')
                 sudo('npm install manta -g')
 
     def grant_permission(self):

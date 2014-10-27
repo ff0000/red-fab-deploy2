@@ -15,8 +15,9 @@ class Collectd(base_collectd.Collectd):
     name = 'setup'
 
     def _add_package(self, name):
-        sudo("apt-get install -y {0}".format(name))
-        sudo('update-rc.d {0} defaults'.format(name))
+        installed = functions.execute_on_host('utils.install_package', package_name=name)
+        if installed:
+            sudo('update-rc.d {0} defaults'.format(name))
         functions.execute_on_host('collectd.start')
 
     @task_method
@@ -28,7 +29,7 @@ class Collectd(base_collectd.Collectd):
         sudo('service collectd stop')
 
     def _get_collectd_headers(self):
-        sudo('apt-get install collectd-dev')
+        functions.execute_on_host('utils.install_package', package_name='collectd-dev')
         return '/usr/include/collectd/'
 
 Collectd().as_tasks()

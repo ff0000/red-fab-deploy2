@@ -40,3 +40,20 @@ def start_or_restart_service(name, hosts=[]):
             sudo('service {0} restart'.format(name))
         else:
             sudo('service {0} start'.format(name))
+
+@task
+def install_package(package_name, update=False, remote=None):
+    with settings(warn_only=True):
+        installed = run('dpkg -s {0}'.format(package_name))
+
+    if installed.return_code != 0:
+        if remote:
+            sudo('apt-get install -y python-software-properties')
+            sudo('add-apt-repository {0}'.format(remote))
+
+        if remote or update:
+            sudo('apt-get update')
+
+        sudo('apt-get install -y {0}'.format(package_name))
+        return True
+    return False

@@ -16,13 +16,17 @@ class SNMPSetup(base_snmp.SNMPSetup):
     name = 'setup'
 
     def _add_package(self):
-        sudo('sed -i "/^# deb.*multiverse/ s/^# //" /etc/apt/sources.list')
-        sudo("apt-get update")
-        sudo("apt-get install -y snmpd")
-        sudo("apt-get install -y snmp-mibs-downloader")
-        sudo('echo "" > /etc/snmp/snmp.conf')
+
+        installed = functions.execute_on_host('utils.install_package', package_name='snmpd')
+        if installed:
+            sudo('sed -i "/^# deb.*multiverse/ s/^# //" /etc/apt/sources.list')
+            functions.execute_on_host('utils.install_package',
+                                package_name='snmp-mibs-downloader', update=True)
+            sudo('update-rc.d snmpd defaults')
+
+        sudo('echo "" > {0}'.format(self.remote_config_path))
         sudo('service snmpd start')
-        sudo('update-rc.d snmpd defaults')
+
 
     def _restart_service(self):
         sudo('service snmpd restart')

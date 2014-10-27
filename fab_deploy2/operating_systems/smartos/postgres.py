@@ -44,8 +44,10 @@ class Postgresql(base_postgres.Postgresql):
         return base_postgres.PostgresInstall._get_data_dir(self, db_version)
 
     def _install_package(self):
-        sudo("pkg_add postgresql%s-server" % self.db_version)
-        sudo("pkg_add postgresql%s-replicationtools" % self.db_version)
+        functions.execute_on_host('utils.install_package',
+                        package_name='postgresql{0}-server'.format(self.db_version))
+        functions.execute_on_host('utils.install_package',
+                        package_name='postgresql{0}-replicationtools'.format(self.db_version))
         sudo("svcadm enable postgresql")
 
     def _stop_db_server(self):
@@ -80,7 +82,8 @@ class PGBouncerInstall(Task):
         }
 
     def install_package(self):
-        sudo('pkg_add %s' %self.pkg_name)
+        functions.execute_on_host('utils.install_package',
+                        package_name=self.pkg_name)
 
     def _setup_parameter(self, file_name, **kwargs):
         for key, value in kwargs.items():
@@ -163,7 +166,8 @@ class PostGISInstall(Task):
     def install_package(self):
         context = functions.execute_on_host('postgres.context')
         version = context['version_directory_join'].join(context['version'].split('.')[:2])
-        sudo("pkg_add postgresql{0}-postgis".format(version))
+        functions.execute_on_host('utils.install_package',
+                            package_name="postgresql{0}-postgis".format(version))
 
     def setup_postgis_template(self):
         POSTGIS_SQL_PATH = "/opt/local/share/postgresql/contrib/postgis-1.5"

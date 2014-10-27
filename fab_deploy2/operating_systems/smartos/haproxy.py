@@ -14,7 +14,7 @@ class Haproxy(base_haproxy.Haproxy):
     rsyslog_conf = "/opt/local/etc/rsyslog.conf"
 
     def _install_package(self):
-        sudo("pkg_add haproxy")
+        functions.execute_on_host('utils.install_package', package_name='haproxy')
         # Some package versions don't include user
         with settings(warn_only=True):
             sudo("groupadd haproxy")
@@ -22,7 +22,7 @@ class Haproxy(base_haproxy.Haproxy):
 
     def _setup_logging(self):
         with settings(warn_only=True):
-            sudo('pkg_add rsyslog')
+            functions.execute_on_host('utils.install_package', package_name='rsyslog')
         sudo('svcadm disable system/system-log')
 
         update_conf = False

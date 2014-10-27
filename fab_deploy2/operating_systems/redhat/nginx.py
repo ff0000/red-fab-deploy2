@@ -15,9 +15,11 @@ class Nginx(base_nginx.Nginx):
     remote_config_path = '/etc/nginx/nginx.conf'
 
     def _install_package(self):
-        sudo("rpm -U --replacepkgs http://nginx.org/packages/rhel/6/noarch/RPMS/nginx-release-rhel-6-0.el6.ngx.noarch.rpm")
-        sudo("yum -y install nginx")
-        sudo('chkconfig nginx on')
+        installed = functions.execute_on_host('utils.install_package',
+                    package_name='nginx',
+                    remote="http://nginx.org/packages/rhel/6/noarch/RPMS/nginx-release-rhel-6-0.el6.ngx.noarch.rpm")
+        if installed:
+            sudo('chkconfig nginx on')
 
     def _setup_logging(self):
         # Done by package

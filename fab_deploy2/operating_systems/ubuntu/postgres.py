@@ -34,9 +34,10 @@ class Postgresql(base_postgres.Postgresql):
         return os.path.join('/etc/postgresql', '%s' % self.db_version, 'main')
 
     def _install_package(self):
-        sudo("apt-get -y install postgresql")
-        sudo("apt-get -y install postgresql-contrib")
-        sudo('update-rc.d postgresql defaults')
+        installed = functions.execute_on_host('utils.install_package', package_name='postgresql')
+        if installed:
+            sudo('update-rc.d postgresql defaults')
+        functions.execute_on_host('utils.install_package', package_name='postgresql-contrib')
 
     def _stop_db_server(self):
         sudo('service postgresql stop')
@@ -106,7 +107,7 @@ class PGBouncerInstall(Task):
     def run(self, section=None):
         """
         """
-        sudo('apt-get -y install pgbouncer')
+        functions.execute_on_host('utils.install_package', package_name='pgbouncer')
 
         self._setup_parameter('%s/pgbouncer.ini' % self.config_dir, **self.config)
 

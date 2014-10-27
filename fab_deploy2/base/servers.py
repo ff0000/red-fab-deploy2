@@ -332,7 +332,8 @@ class AppServer(LBServer):
     packages = []
 
     def _install_packages(self):
-        raise NotImplementedError()
+        for package in self.packages:
+            functions.execute_on_host('utils.install_package', package_name=package)
 
     def _setup_services(self):
         super(AppServer, self)._setup_services()

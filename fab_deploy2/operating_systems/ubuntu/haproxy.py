@@ -17,8 +17,9 @@ class Haproxy(base_haproxy.Haproxy):
     loglocal = 'local0'
 
     def _install_package(self):
-        sudo("apt-get -y install haproxy")
-        sudo('update-rc.d haproxy defaults')
+        installed = functions.execute_on_host('utils.install_package', package_name='haproxy')
+        if installed:
+            sudo('update-rc.d haproxy defaults')
         append("/etc/default/haproxy", "ENABLED=1", use_sudo=True)
 
     def _setup_logging(self):

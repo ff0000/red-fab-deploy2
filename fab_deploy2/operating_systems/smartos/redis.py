@@ -15,7 +15,8 @@ class Redis(base_redis.RedisInstall):
     config_location = '/opt/local/etc/redis.conf'
 
     def _install_package(self):
-        sudo('pkg_add redis')
+        functions.execute_on_host('utils.install_package',
+                        package_name='redis')
 
     @task_method
     def start(self):

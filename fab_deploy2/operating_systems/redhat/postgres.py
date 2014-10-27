@@ -35,10 +35,12 @@ class Postgresql(base_postgres.Postgresql):
             self.data_dir_default_base, '%s' % self.db_version, 'data')
 
     def _install_package(self):
-        sudo("rpm -U --replacepkgs {0}".format(self.package_path))
         pk_version = self.db_version.replace('.', '')
-        sudo("yum -y install postgresql%s-server" % pk_version)
-        sudo("yum -y install postgresql%s-contrib" % pk_version)
+        functions.execute_on_host('utils.install_package',
+                                    package_name="postgresql{0}-server".format(pk_version),
+                                    remote=self.package_path)
+        functions.execute_on_host('utils.install_package',
+                                    package_name="postgresql{0}-contrib".format(pk_version))
 
         postgres_conf = os.path.join(self.config_dir, 'postgresql.conf')
         self._override_pgdata()

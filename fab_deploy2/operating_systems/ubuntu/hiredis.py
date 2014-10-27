@@ -17,6 +17,6 @@ class HiRedisSetup(ContextTask):
     name = "setup"
 
     def run(self):
-        sudo('apt-get -y install {0}'.format(self.package_name))
+        functions.execute_on_host('utils.install_package', package_name=self.package_name)
 
 setup = HiRedisSetup()

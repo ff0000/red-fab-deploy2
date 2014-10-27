@@ -13,7 +13,7 @@ class Nginx(base_nginx.Nginx):
     """
 
     def _install_package(self):
-        sudo("pkg_add nginx")
+        functions.execute_on_host('utils.install_package', package_name='nginx')
 
     def _setup_logging(self):
         sudo('sed -ie "s/^#nginx\(.*\)/nginx\\1/g" /etc/logadm.conf')

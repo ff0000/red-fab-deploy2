@@ -10,17 +10,12 @@ class RHMixin(object):
     platform = base_platform
 
     def _ssh_restart(self):
-        #sudo('apt-get update')
         sudo('service sshd restart')
 
 
 class AppMixin(RHMixin):
     packages = ['python-psycopg2', 'python-setuptools', 'python-imaging',
                 'python-pip']
-
-    def _install_packages(self):
-        for package in self.packages:
-            sudo('yum -y install  %s' % package)
 
 
 class AppServer(AppMixin, base_servers.AppServer):

@@ -15,8 +15,9 @@ class Redis(base_redis.RedisInstall):
     config_location = '/etc/redis/redis.conf'
 
     def _install_package(self):
-        sudo('apt-get -y install redis-server')
-        sudo('update-rc.d redis-server defaults')
+        installed = functions.execute_on_host('utils.install_package', package_name='redis-server')
+        if installed:
+            sudo('update-rc.d redis-server defaults')
 
     @task_method
     def start(self):

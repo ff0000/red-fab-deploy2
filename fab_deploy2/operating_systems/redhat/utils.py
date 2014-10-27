@@ -49,3 +49,17 @@ def get_interface(internal=True):
                 return i
 
     raise Exception("Couldn't find an matching interface")
+
+
+@task
+def install_package(package_name, update=False, remote=None):
+    with settings(warn_only=True):
+        installed = run('rpm -qa | grep {0}'.format(package_name))
+
+    if installed.return_code != 0:
+        if remote:
+            sudo('rpm -U --replacepkgs {0}'.format(remote))
+
+        sudo('yum -y install {0}'.format(package_name))
+        return True
+    return False

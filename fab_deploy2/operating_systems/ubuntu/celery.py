@@ -16,6 +16,7 @@ class Celeryd(base_celery.Celeryd):
     user = 'www-data'
     group = 'www-data'
     conf_file = '/etc/supervisor/supervisord.conf'
+    conf_location = '/etc/supervisor/conf.d/'
 
     @task_method
     def start(self):
@@ -34,10 +35,14 @@ class Celeryd(base_celery.Celeryd):
 
     def _setup_service(self, env_value=None):
         # we use supervisor to control gunicorn
-        sudo('apt-get -y install supervisor')
-        sudo('update-rc.d supervisor defaults')
-        celery_conf = os.path.join(env.configs_path, "celery/supervisor_{0}.conf".format(self.name))
-        sudo('ln -sf {0} /etc/supervisor/conf.d/'.format(celery_conf))
+        installed = functions.execute_on_host('utils.install_package', package_name='supervisor')
+        if installed:
+            sudo('update-rc.d supervisor defaults')
+
+        if self.conf_location:
+            celery_conf = os.path.join(env.configs_path,
+                                    "celery/supervisor_{0}.conf".format(self.name))
+            sudo('ln -sf {0} {1}'.format(celery_conf, self.conf_location))
 
     def _setup_rotate(self, path):
         text = [

@@ -15,6 +15,7 @@ class Gunicorn(base_gunicorn.Gunicorn):
     user = 'www-data'
     group = 'www-data'
     daemonize = False
+    conf_location = '/etc/supervisor/conf.d/'
 
     @task_method
     def start(self):
@@ -25,10 +26,13 @@ class Gunicorn(base_gunicorn.Gunicorn):
         sudo('supervisorctl stop %s' % self.gunicorn_name)
 
     def _setup_service(self, env_value=None):
-        sudo('apt-get -y install supervisor')
-        sudo('update-rc.d supervisor defaults')
-        gunicorn_conf = os.path.join(env.configs_path, "gunicorn/supervisor_{0}.conf".format(self.gunicorn_name))
-        sudo('ln -sf {0} /etc/supervisor/conf.d/'.format(gunicorn_conf))
+        installed = functions.execute_on_host('utils.install_package', package_name='supervisor')
+        if installed:
+            sudo('update-rc.d supervisor defaults')
+        if self.conf_location:
+            gunicorn_conf = os.path.join(env.configs_path,
+                        "gunicorn/supervisor_{0}.conf".format(self.gunicorn_name))
+            sudo('ln -sf {0} {1}'.format(gunicorn_conf, conf_location))
 
     def upload_templates(self):
         context = super(Gunicorn, self).upload_templates()
