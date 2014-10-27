@@ -32,7 +32,7 @@ class Gunicorn(base_gunicorn.Gunicorn):
         if self.conf_location:
             gunicorn_conf = os.path.join(env.configs_path,
                         "gunicorn/supervisor_{0}.conf".format(self.gunicorn_name))
-            sudo('ln -sf {0} {1}'.format(gunicorn_conf, conf_location))
+            sudo('ln -sf {0} {1}'.format(gunicorn_conf, self.conf_location))
 
     def upload_templates(self):
         context = super(Gunicorn, self).upload_templates()

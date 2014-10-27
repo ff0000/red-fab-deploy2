@@ -27,7 +27,8 @@ class Celeryd(ServiceContextTask):
         'nodes' : 'celery',
         'pid_dir' : '/var/www',
         'name' : name,
-        'timelimit' : '300'
+        'timelimit' : '300',
+        'conf_location' : ''
     }
 
     def _setup_service(self):
