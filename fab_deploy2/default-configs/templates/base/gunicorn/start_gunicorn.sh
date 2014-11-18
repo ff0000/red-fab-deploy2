@@ -1,6 +1,6 @@
 # Customize this script if need to launch a configurable conf file. EI: -c `hostname`.py
 {% block def_command %}
-COMMAND="{{ python.location }}bin/gunicorn_django {% if gunicorn.daemonize %}-D{% endif %} -c {{ gunicorn.config_location }}"
+COMMAND="{{ python.location }}bin/gunicorn {% if gunicorn.daemonize %}-D{% endif %} -c {{ gunicorn.config_location }} wsgi"
 {% endblock %}
 
 {% block newrelic_setup %}

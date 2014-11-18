@@ -21,6 +21,7 @@ class Gunicorn(ServiceContextTask):
 
     gunicorn_name = 'gunicorn'
 
+
     default_context = {
         'num_workers' : 10,
         'listen_address' : '0.0.0.0:8000',
@@ -31,7 +32,8 @@ class Gunicorn(ServiceContextTask):
         'gunicorn_name' : gunicorn_name,
         'daemonize' : True,
         'project_path' : '/project/',
-        'conf_location' : ''
+        'conf_location' : '',
+        'wsgi_file' : 'wsgi.py',
     }
 
     def _setup_service(self):
@@ -44,6 +46,7 @@ class Gunicorn(ServiceContextTask):
                             "gunicorn/start_{0}.sh".format(self.gunicorn_name))
         context['config_location'] = os.path.join(env.configs_path,
                             "gunicorn/{0}.py".format(self.gunicorn_name))
+
         return context
 
     def get_template_context(self):
@@ -55,8 +58,10 @@ class Gunicorn(ServiceContextTask):
     def upload_templates(self):
         context = self.get_template_context()
         functions.render_template("gunicorn/gunicorn.pt", context[self.context_name]['config_location'], context=context)
+        functions.render_template("gunicorn/wsgi.py", context[self.context_name]['wsgi_file'], context=context)
         script = functions.render_template("gunicorn/start_gunicorn.sh", context[self.context_name]['start_script'], context=context)
         sudo('chmod +x {}'.format(script))
+        run('ln -sf {0}gunicorn/{1} {2}/project/{1}'.format(env.configs_path, context[self.context_name]['wsgi_file'], context['code_path']))
         return context
 
     def _setup_logs(self):
