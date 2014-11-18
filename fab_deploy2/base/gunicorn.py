@@ -33,7 +33,6 @@ class Gunicorn(ServiceContextTask):
         'daemonize' : True,
         'project_path' : '/project/',
         'conf_location' : '',
-        'use_wsgi' : False,
     }
 
     def _setup_service(self):
