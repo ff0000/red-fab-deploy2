@@ -192,7 +192,7 @@ class LBServer(BaseServer):
         self._start_monitoring()
 
     @task_method
-    def update(self, branch=None, update_configs=True):
+    def update(self, branch=None, update_configs=True, link_code=True):
         """
         Update server.
 
@@ -200,7 +200,8 @@ class LBServer(BaseServer):
         Only updates config files if update_configs is true
         """
         self._update_server(branch=branch,
-                            update_configs=update_configs)
+                            update_configs=update_configs,
+                            link_code=link_code)
 
     @task_method
     def restart_services(self):
@@ -237,7 +238,7 @@ class LBServer(BaseServer):
 
     def _remove_servers(self, servers):
         self._reset_config_object(servers)
-        self._update_server()
+        self._update_configs()
         self._restart_services()
 
     @task_method
@@ -286,7 +287,7 @@ class LBServer(BaseServer):
     def _restart_services(self):
         functions.execute_on_host('nginx.start')
 
-    def _update_server(self, branch=None, update_configs=True):
+    def _update_server(self, branch=None, update_configs=True, link_code=True):
         if not branch:
             branch = self.git_branch
 
@@ -298,9 +299,18 @@ class LBServer(BaseServer):
         functions.execute_on_host('local.deploy.deploy_code',
                 branch=branch)
 
-        if update_configs:
-            functions.execute_on_host('nginx.update')
+        if link_code:
+            self._link_code()
 
+        if update_configs:
+            self._update_configs()
+
+
+    def _link_code(self):
+        functions.execute_on_host('local.deploy.update_code_links')
+
+    def _update_configs(self):
+        functions.execute_on_host('nginx.update')
 
     def get_context(self):
         app_servers = env.config_object.get_list(self.proxy_section,
@@ -346,8 +356,9 @@ class AppServer(LBServer):
     def _update_server(self, *args, **kwargs):
         super(AppServer, self)._update_server(*args, **kwargs)
         functions.execute_on_host('python.update')
-        if kwargs.get('update_configs'):
-            functions.execute_on_host('gunicorn.update')
+
+    def _update_configs(self):
+        functions.execute_on_host('gunicorn.update')
 
     def get_context(self):
         lbs = env.config_object.get_list('load-balancer',

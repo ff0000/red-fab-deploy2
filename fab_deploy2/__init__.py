@@ -8,7 +8,7 @@ from config import CustomConfig
 
 # Import all tasks
 import local
-from deploy import deploy
+from deploy import deploy, link_and_restart, migrate_db
 
 def setup_env(project_path):
     """
