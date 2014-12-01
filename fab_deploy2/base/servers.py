@@ -358,6 +358,7 @@ class AppServer(LBServer):
         functions.execute_on_host('python.update')
 
     def _update_configs(self):
+        super(AppServer, self)._update_configs()
         functions.execute_on_host('gunicorn.update')
 
     def get_context(self):
