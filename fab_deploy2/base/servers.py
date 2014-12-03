@@ -204,6 +204,16 @@ class LBServer(BaseServer):
                             link_code=link_code)
 
     @task_method
+    def update_code_links(self, code_hash=None):
+        """
+        Update server.
+
+        Shouldn't restart services.
+        Only updates config files if update_configs is true
+        """
+        self._link_code(code_hash=code_hash)
+
+    @task_method
     def restart_services(self):
         """
         Restart services
@@ -306,8 +316,9 @@ class LBServer(BaseServer):
             self._update_configs()
 
 
-    def _link_code(self):
-        functions.execute_on_host('local.deploy.update_code_links')
+    def _link_code(self, code_hash=None):
+        functions.execute_on_host('local.deploy.update_code_links',
+                                   code_hash=code_hash)
 
     def _update_configs(self):
         functions.execute_on_host('nginx.update')

@@ -51,10 +51,13 @@ def link_and_restart(code_hash=None):
     """
 
     role = env.host_roles.get(env.host_string)
-    if not role:
+    if role:
+        task_name = "servers.{0}.update_code_links".format(
+                            env.role_name_map.get(role))
+    else:
         raise Exception("Don't know how to deploy this host")
 
-    functions.execute_on_host('local.deploy.update_code_links', code_hash=code_hash)
+    functions.execute_on_host(task_name, code_hash=code_hash)
 
     if env.host_string == env.all_hosts[-1]:
         roles = {}
