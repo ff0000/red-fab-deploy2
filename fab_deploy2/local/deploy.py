@@ -179,11 +179,15 @@ class LinkCode(Task):
         """.format(os.path.join(env.base_remote_path, 'code'),
                    self.max_keep)
         run(purge)
-        run('find -L {0} -maxdepth 1 -type l -exec rm "{{}}" \;'.format(static_dir))
+        if exists(static_dir):
+            run('find -L {0} -maxdepth 1 -type l -exec rm "{{}}" \;'.format(static_dir))
 
 
-    def _link_static(self, code_dir, static_dir, static_hash):
+    def _link_static(self, code_dir, static_dir):
+        location = os.path.join(code_dir, STATIC_VERSION)
+        static_hash = run('tail {0}'.format(location))
         assert static_hash
+
         code_static_dir = os.path.join(code_dir, self.code_static_dir)
 
         run('rsync -rptov --checksum  --delete-after --filter "P {0}*" "{1}/" "{2}"'.format(self.cache_prefix, code_static_dir, static_dir))
@@ -214,15 +218,20 @@ class LinkCode(Task):
 
         static_dir = functions.execute_on_host('nginx.context')['static_location']
 
-        location = os.path.join(code_dir, STATIC_VERSION)
-        static_hash = run('tail {0}'.format(location))
-
-        self._link_static(code_dir, static_dir, static_hash)
+        self._link_static(code_dir, static_dir)
         self._link_active(code_dir)
         self._purge(static_dir)
 
 class MigrateDB(Task):
     name = 'migrate_db'
+
+    def migrate(self, code_hash):
+        manager = os.path.join(env.base_remote_path, 'code', code_hash, 'project', 'manage.py')
+        if exists(manager):
+            context = functions.execute_on_host('python.context')
+            run('{0}bin/python {1} migrate'.format(context['location'], manager))
+        else:
+           raise Exception("{0} does not exist, do a full deploy".format(code_dir))
 
     def run(self, code_hash=None):
         """
@@ -236,12 +245,8 @@ class MigrateDB(Task):
         if not code_hash:
             raise Exception("Code hash not found, do a full deploy")
 
-        manager = os.path.join(env.base_remote_path, 'code', code_hash, 'project', 'manage.py')
-        if exists(manager):
-            context = functions.execute_on_host('python.context')
-            run('{0}bin/python {1} migrate'.format(context['location'], manager))
-        else:
-           raise Exception("{0} does not exist, do a full deploy".format(code_dir))
+        self.migrate(code_hash)
+
 
 deploy_code = DeployCode()
 prep_code = PrepDeploy()
