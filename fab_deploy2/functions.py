@@ -48,6 +48,8 @@ def get_remote_name(host, prefix, name=None):
     """
     """
     assert prefix
+    if name and name.startswith(prefix):
+        return name
 
     l = env.config_object.get_list(prefix, env.config_object.CONNECTIONS)
     i = 0
