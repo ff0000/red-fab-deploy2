@@ -2,8 +2,9 @@ import os
 
 from fab_deploy2 import functions
 
-from fabric.api import local, env, execute, run
+from fabric.api import local, env, execute, run, get
 from fabric.tasks import Task
+from fabric.utils import abort
 from fabric.context_managers import settings, hide
 from fabric.contrib.files import exists
 
@@ -40,34 +41,14 @@ class DeployCode(Task):
         run('mkdir -p {0}'.format(code_dir))
         run('cp -r {0}updating/* {1}/'.format(env.base_remote_path, code_dir))
 
-    def build_settings(self, code_dir):
-        template_name = 'django/base_settings'
-        role = env.host_roles.get(env.host_string)
-        if os.path.exists(os.path.join(env.deploy_path, 'templates',
-                        'django', role)):
-            template_name = "django/{0}".format(role)
-
-        context = functions.get_role_context(role).get('django', {})
-
-        # Update media root
-        context.update({
-            'nginx' : functions.execute_on_host('nginx.context')
-        })
-
-        template_location = functions.render_template(template_name, context=context)
-        run('cat {0} >> {1}'.format(template_location,
-                        os.path.join(code_dir, 'project',
-                                    'settings', '__init__.py')
-                        )
-        )
-
     def _post_sync(self, code_dir, code_hash):
         """
         Hook that is executed after a sync.
 
         Renders django settings templates
+
         """
-        self.build_settings(code_dir)
+        functions.execute_on_host('local.deploy.build_settings', code_dir=code_dir)
 
     def run(self, branch=None):
         """
@@ -247,7 +228,121 @@ class MigrateDB(Task):
 
         self.migrate(code_hash)
 
+class BuildSettings(Task):
+    """ Builds your settings file.
 
+    Attributes
+    ----------
+    name : str
+        An invocation name for this task.
+
+    """
+
+    name = 'build_settings'
+
+
+    def _get_context(self, role):
+        """
+
+        Returns
+        -------
+        out : dict
+            Context dictionary.
+
+        """
+        return functions.get_role_context(role).get('django', {})
+
+
+    def _build_settings(self, code_dir):
+        """ Construct a new settings file.
+
+        Notes
+        -----
+        To ensure an idempotent outcome, the rendered settings template
+        is appended to a "pristine" copy of the settings/__init__.py file
+        (grabbed here from /srv/updating/project/settings/__init__.py).
+        The existing __init__.py file is then clobbered.
+
+        Parameters
+        ----------
+        code_dir : str
+            Path to the code directory.
+
+        """
+        template_name = 'django/base_settings'
+        role = env.host_roles.get(env.host_string)
+        if os.path.exists(os.path.join(env.deploy_path, 'templates',
+                        'django', role)):
+            template_name = "django/{0}".format(role)
+
+        pristine_location = os.path.join(env.base_remote_path, 'updating',
+                'project', 'settings', '__init__.py')
+
+        context = self._get_context(role)
+
+        context.update({
+            'nginx' : functions.execute_on_host('nginx.context')
+        })
+
+        template_location = functions.render_template(template_name, context=context)
+        run('cat {0} {1} > {2}'.format(pristine_location, template_location,
+                        os.path.join(code_dir, 'project',
+                                    'settings', '__init__.py')
+                        )
+        )
+
+    def _read_remote_file(self, path):
+        """ Return the contents of a remote file.
+
+        Parameters
+        ----------
+        path : string
+            The path to a remote file to read.
+
+        Raises
+        ------
+        IOError
+            If the requested path cannot be found.
+
+        Returns
+        -------
+        out : string
+            The contents of the remote file.
+
+        """
+
+        if exists(path):
+            from StringIO import StringIO
+            fd = StringIO()
+            get(path, fd)
+            return fd.getvalue()
+        else:
+            raise IOError('Remote file not found at path "{0}"'.format(path))
+
+
+    def run(self, code_dir=None):
+        """ Handle task execution.
+
+        Parameters
+        ----------
+        code_dir : str, optional
+            The code directory for the relevant deployment.
+            Will be determined automatically if omitted.
+
+        """
+        if code_dir is None:
+            remote_version_path = os.path.join(env.base_remote_path,
+                    'updating', CODE_VERSION)
+            try:
+                code_hash = self._read_remote_file(remote_version_path)
+                code_dir = os.path.join(env.base_remote_path, 'code', code_hash)
+            except IOError as e:
+                abort('Please make sure to build and deploy first!  (Encountered: {0})'.format(e))
+
+        self._build_settings(code_dir)
+
+
+build_settings = BuildSettings()
 deploy_code = DeployCode()
 prep_code = PrepDeploy()
 update_code_links = LinkCode()
