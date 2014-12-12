@@ -242,16 +242,19 @@ class BuildSettings(Task):
 
 
     def _get_context(self, role):
-        """
+        """ Return a template context for settings generation.
 
         Returns
         -------
         out : dict
-            Context dictionary.
+            Template context dictionary.
 
         """
-        return functions.get_role_context(role).get('django', {})
-
+        context = functions.get_role_context(role).get('django', {})
+        context.update({
+            'nginx' : functions.execute_on_host('nginx.context')
+        })
+        return context
 
     def _build_settings(self, code_dir):
         """ Construct a new settings file.
@@ -278,13 +281,7 @@ class BuildSettings(Task):
         pristine_location = os.path.join(env.base_remote_path, 'updating',
                 'project', 'settings', '__init__.py')
 
-        context = self._get_context(role)
-
-        context.update({
-            'nginx' : functions.execute_on_host('nginx.context')
-        })
-
-        template_location = functions.render_template(template_name, context=context)
+        template_location = functions.render_template(template_name, context=self._get_context(role))
         run('cat {0} {1} > {2}'.format(pristine_location, template_location,
                         os.path.join(code_dir, 'project',
                                     'settings', '__init__.py')
