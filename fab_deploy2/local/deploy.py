@@ -41,14 +41,15 @@ class DeployCode(Task):
         run('mkdir -p {0}'.format(code_dir))
         run('cp -r {0}updating/* {1}/'.format(env.base_remote_path, code_dir))
 
+    def build_settings(self, code_dir):
+        functions.execute_on_host('local.deploy.build_settings', code_dir=code_dir)
+
     def _post_sync(self, code_dir, code_hash):
         """
         Hook that is executed after a sync.
 
-        Renders django settings templates
-
         """
-        functions.execute_on_host('local.deploy.build_settings', code_dir=code_dir)
+        self.build_settings(code_dir)        
 
     def run(self, branch=None):
         """
