@@ -37,10 +37,10 @@ def deploy(branch=None, update_configs=False, no_restart=False, hosts=None):
                 roles[r] = []
             roles[r].append(x)
 
-            for r, v in roles.items():
-                task_name = "servers.{0}.restart_services".format(
-                                    env.role_name_map.get(r))
-                execute(task_name, hosts=v)
+        for r, v in roles.items():
+            task_name = "servers.{0}.restart_services".format(
+                                env.role_name_map.get(r))
+            execute(task_name, hosts=v)
 
 @task(hosts=[])
 def link_and_restart(code_hash=None):

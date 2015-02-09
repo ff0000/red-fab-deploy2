@@ -72,6 +72,7 @@ class New(Task):
 
         default_dataset = DEFAULT_DATASET
         default_package = DEFAULT_PACKAGE
+        networks = None
 
         if task:
             results = execute(config_name, hosts=['fake'])['fake']
@@ -80,6 +81,8 @@ class New(Task):
                 default_dataset = results['dataset']
             if 'server_size' in results:
                 default_package = results['server_size']
+            if 'networks' in results:
+                networks = results['networks']
         else:
             print "I don't know how to add a %s server" % kwargs.get('type')
             sys.exit(1)
@@ -91,6 +94,9 @@ class New(Task):
         elif not location:
             print "You must supply an data_center argument or add a joyent_default_data_center attribute to your env"
             sys.exit(1)
+
+        if not networks and env.get('joyent_default_networks'):
+            networks = env.joyent_default_networks
 
         key_name = raw_input('Enter your ssh key name: ')
         key_id = '/%s/keys/%s' % ( env.joyent_account, key_name)
@@ -125,7 +131,8 @@ class New(Task):
             'dataset' : dataset_id,
             'metadata' : kwargs.get('metadata', {}),
             'tags' : kwargs.get('tags', {}),
-            'package' : package_id
+            'package' : package_id,
+            'networks' : networks
         }
 
         machine = sdc.create_machine(**new_args)
