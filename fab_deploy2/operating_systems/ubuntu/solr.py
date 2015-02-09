@@ -6,7 +6,7 @@ from fab_deploy2 import functions
 from fabric.api import sudo, env
 
 
-class UbuntuSolr(base_solr.Solr):
+class Solr(base_solr.Solr):
     @task_method
     def start(self):
         functions.execute_on_host('utils.start_or_restart_service',
@@ -60,4 +60,4 @@ class UbuntuSolr(base_solr.Solr):
         sudo('ln -sf %s %s' % (solr_config, remote_config_path))
 
 
-UbuntuSolr().as_tasks(name='solr')
+Solr().as_tasks(name='solr')
