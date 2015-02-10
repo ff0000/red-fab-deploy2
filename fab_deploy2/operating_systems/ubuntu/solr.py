@@ -60,4 +60,4 @@ class Solr(base_solr.Solr):
         sudo('ln -sf %s %s' % (solr_config, remote_config_path))
 
 
-Solr().as_tasks(name='solr')
+Solr().as_tasks()
