@@ -10,20 +10,16 @@ class Solr(base_solr.Solr):
     @task_method
     def start(self):
         functions.execute_on_host('utils.start_or_restart_service',
-                                  name='jetty',
+                                  name='tomcat6',
                                   host=[env.host_string])
 
     @task_method
     def stop(self):
-        sudo('service jetty stop')
+        sudo('service tomcat6 stop')
 
     def _install_package(self):
         functions.execute_on_host(
-            'utils.install_package', package_name='solr-jetty')
-        sudo('sed -i "s/^NO_START=1/NO_START=0/" /etc/default/jetty')
-        sudo('sed -i "s/^.*JETTY_HOST.*/JETTY_HOST=localhost/" /etc/default/jetty')
-        sudo('sed -i "s/^.*#JAVA_HOME=.*/JAVA_HOME=\/usr\/lib\/jvm\/java-7-openjdk-amd64\//" /etc/default/jetty')
-        sudo('echo /usr/share/java/tomcat-coyote.jar >> /etc/jetty/start.config')
+            'utils.install_package', package_name='solr-tomcat')
 
     def _setup_logging(self):
         pass
