@@ -14,7 +14,7 @@ class UbuntuMixin(object):
         sudo('service ssh restart')
 
 class AppMixin(UbuntuMixin):
-    packages = ['python-psycopg2', 'python-setuptools', 'python-imaging',
+    packages = ['python-psycopg2', 'python-setuptools', 'python-pil',
                 'python-pip']
 
 class AppServer(AppMixin, base_servers.AppServer):
