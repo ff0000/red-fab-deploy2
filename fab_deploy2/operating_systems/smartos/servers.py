@@ -17,7 +17,7 @@ class JoyentMixin(object):
 
 class AppMixin(JoyentMixin):
     packages = ['gcc47', 'py27-psycopg2', 'py27-setuptools',
-                'py27-imaging', 'py27-expat']
+                'py27-Pillow', 'py27-expat']
 
     def _set_profile(self):
         JoyentMixin._set_profile(self)
