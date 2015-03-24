@@ -5,9 +5,9 @@ MEDIA_ROOT = '{{ nginx.uploads_location }}/'
 ALLOWED_HOSTS = [
     {% for h in nginx.hosts %}
         {% if h.startswith('*.') %}
-        '{{ h[1:] }}', '{{ h[1:] }}.',
+        '{{ h[1:] }}',
         {% else %}
-        '{{ h }}', '{{ h }}.',
+        '{{ h }}',
         {% endif %}
     {% endfor %}
 ]
