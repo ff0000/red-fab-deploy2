@@ -2,3 +2,4 @@ fabric
 jinja2
 smartdc
 boto
+sphinx-rtd-theme==0.1.8
