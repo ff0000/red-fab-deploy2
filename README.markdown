@@ -1,6 +1,6 @@
-# red-fab-deploy: django deployment tool
+# red-fab-deploy2: Django deployment tool
 
-*red-fab-deploy* is a collection of [Fabric](http://www.fabfile.org/) scripts for deploying and
+*red-fab-deploy2* is a collection of [Fabric](http://www.fabfile.org/) scripts for deploying and
 managing projects created at RED. License is MIT.
 
 This project is specifically targeted at deploying websites built using
@@ -64,4 +64,4 @@ To list the tasks run the following command:
 
     $ fab --list
 
-Running **fab -d <task_name>** will print the full docstring for the given task.
+Running **fab -d `<task_name`>** will print the full docstring for the given task.
