@@ -22,6 +22,10 @@ Also, *deploy* tasks use a *symlink* to pointing to the new created folder. This
 will be served by *nginx* and *gunicorn* and *symlink* will be updated every time we deploy
 new code.
 
+Keep in mind that *nginx* configuration file is not updated every *deploy* task
+is executed. If you need to do that, don't forget to run *nginx.update* task. However,
+*Django* settings file is updated every time *deploy* is launched.
+
 
 Tasks
 -----

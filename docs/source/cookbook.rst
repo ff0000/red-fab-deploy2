@@ -89,3 +89,32 @@ From local machine:
 
    $ fab nginx.update -R dev-server
    $ fab link_and_restart -R dev-server
+
+
+Using a different cache size for nginx
+---------------------------------------
+
+If you want to use a different cache size for *nginx*, you'll need to modify
+the *context* variable inside your *fabfile.py*. This variable will be used by
+*nginx* template for generating the final configuration file for the web server.
+For example, let's replace default value used inside default template for *128m*,
+only for *dev-server* servers:
+
+::
+
+   env.context['dev-server'] = {
+      'nginx': {
+        'cache_size': '128m',
+    },
+   }
+
+Using roundrobin for HAproxy load balancer
+-----------------------------------
+
+::
+
+   env.context['load-balancer'] = {
+    'haproxy': {
+        'balance': 'roundrobin',
+    }
+   }
