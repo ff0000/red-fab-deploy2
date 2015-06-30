@@ -118,3 +118,14 @@ Using roundrobin for HAproxy load balancer
         'balance': 'roundrobin',
     }
    }
+
+Setup for PostgreSQL db backups
+--------------------------------
+
+The next command is going to setup backups for PostgreSQL databases on *slave-db*.
+Backups files are going to be created on */backups/db* directory by default. Also,
+*cron* will be schedule for executing the backup script every day at midnight.
+
+::
+
+  $ fab postgres.setup_backups -R slave-db
