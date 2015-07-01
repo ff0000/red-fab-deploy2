@@ -129,3 +129,6 @@ Backups files are going to be created on */backups/db* directory by default. Als
 ::
 
   $ fab postgres.setup_backups -R slave-db
+
+If you need to move backups files to *Manta* storage then you can use *red-backups*
+Python script to do that.
