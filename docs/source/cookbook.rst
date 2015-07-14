@@ -132,3 +132,25 @@ Backups files are going to be created on */backups/db* directory by default. Als
 
 If you need to move backups files to *Manta* storage then you can use *red-backups*
 Python script to do that.
+
+Setting a specific number of gunicorn workers
+----------------------------------------------
+
+*fab_deploy2* sets *10* *gunicorn* workers by default. If we want to use a different
+nunber, we can do that. The following code on *fabfile.py* will use *8* *gunicorn*
+workers on *dev-server*:
+
+::
+
+  env.context['dev-server'] = {
+      'gunicorn': {
+          'num_workers': 8,
+      },
+  }
+
+Then, we should run the following commands for applying our change:
+
+::
+
+  $ fab gunicorn.update -R dev-server
+  $ fab gunicorn.start -R dev-server
