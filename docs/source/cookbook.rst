@@ -58,7 +58,13 @@ Installing HAproxy as load-balancer
 Configuring firewall
 ----------------------
 
-``$ fab firewall.setup``
+The next command is going to configure the firewall for the given server or
+servers (*dev-server* for this example). This task will create */srv/configs/ipf/ipf.conf*
+configuration file for the firewall. Also, the task reads *deploy/servers.ini* file
+for configuring which servers are going to be reached from *dev-server*. If you
+change something in *allowed-sections* then you should run the task again.
+
+``$ fab firewall.setup -R dev-server``
 
 
 Deploying without linking code and without restarting services
