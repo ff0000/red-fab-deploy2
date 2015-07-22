@@ -33,6 +33,7 @@ class Gunicorn(ServiceContextTask):
         'daemonize' : True,
         'project_path' : '/project/',
         'conf_location' : '',
+        'log_level': 'WARNING',
     }
 
     def _setup_service(self):
