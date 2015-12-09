@@ -45,7 +45,7 @@ class Postgresql(ServiceContextTask):
         'version_directory_join' : '.',
         'cron_file' : '/etc/crontab',
         'keep_wals' : 3,
-        'version' : '9.3',
+        'version' : '9.4',
         'backup_path' : '/backups/dbs',
         'pw_encryption' : 'md5',
         'trigger' : '/tmp/pg_failover_trigger',
