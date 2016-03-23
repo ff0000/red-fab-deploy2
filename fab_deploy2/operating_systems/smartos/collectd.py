@@ -24,7 +24,7 @@ class Collectd(base_collectd.Collectd):
         'curl': 'collectd-curl',
         'network': 'collectd-network',
         'notify_email': 'collectd-notify-email',
-        'postgresql': 'collectd-postgresql93',
+        'postgresql': 'collectd-postgresql94',
         'rrdtool': 'collectd-rrdtool',
         'nginx': 'collectd-curl'
     }

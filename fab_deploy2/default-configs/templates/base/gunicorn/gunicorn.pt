@@ -8,5 +8,6 @@ workers = {{ gunicorn.num_workers }}
 
 loglevel = "WARNING"
 logfile = "{{ gunicorn.log_file }}"
+timeout = {{ gunicorn.timeout }}
 django_settings = "settings"
 {% endblock %}
