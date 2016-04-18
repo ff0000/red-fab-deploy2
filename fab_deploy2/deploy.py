@@ -3,6 +3,8 @@ import os
 from fabric.api import local, env, task, cd, run, settings, execute
 
 from fab_deploy2 import functions
+from fab_deploy2.base import slack_bot
+
 
 @task(hosts=[])
 def deploy(branch=None, update_configs=False, no_restart=False, hosts=None):
@@ -41,6 +43,9 @@ def deploy(branch=None, update_configs=False, no_restart=False, hosts=None):
             task_name = "servers.{0}.restart_services".format(
                                 env.role_name_map.get(r))
             execute(task_name, hosts=v)
+
+        # POSTing Slack message
+        slack_bot.slack_put_msg(env.host_string)
 
 @task(hosts=[])
 def link_and_restart(code_hash=None):
