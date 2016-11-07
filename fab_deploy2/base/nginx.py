@@ -48,7 +48,8 @@ class Nginx(ServiceContextTask):
         'template' : 'nginx/nginx.conf',
         'hosts': [],
         'status': True,
-        'forward_header' : 'X-Cluster-Client-Ip'
+        'forward_header' : 'X-Cluster-Client-Ip',
+        'aws_health_check': False,
     }
 
     @task_method
