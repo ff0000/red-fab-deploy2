@@ -47,7 +47,7 @@ class Postgresql(base_postgres.Postgresql):
         functions.execute_on_host('utils.install_package',
                         package_name='postgresql{0}-server'.format(self.db_version))
         functions.execute_on_host('utils.install_package',
-                        package_name='postgresql{0}-replicationtools'.format(self.db_version))
+                        package_name='postgresql{0}-contrib'.format(self.db_version))
         sudo("svcadm enable postgresql")
 
     def _stop_db_server(self):
