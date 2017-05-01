@@ -34,6 +34,8 @@ setup(
         'fab_deploy2.rackspace',
         'fab_deploy2.rackspace.ubuntu',
         'fab_deploy2.rackspace.redhat',
+        'fab_deploy2.azure',
+        'fab_deploy2.azure.ubuntu',
 		],
 	version = '0.2.5',
     author='RED Interactive Agency',
