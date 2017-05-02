@@ -37,17 +37,19 @@ class Node(MultiContextTask):
 
     @task_method
     def start(self):
+        self.stop()
         app_filepath = os.path.join(self.static_folder, self.app_file)
         sudo('pm2 start %s' % app_filepath)
 
     @task_method
     def stop(self):
-        sudo('pm2 stop')
+        app = os.path.splitext(self.app_file)[0]
+        sudo('pm2 stop %s' % app)
 
 
     @task_method
     def restart(self):
-        self.stop()
-        self.start()
+        app = os.path.splitext(self.app_file)[0]
+        sudo('pm2 restart %s' % app)
 
 Node().as_tasks()
