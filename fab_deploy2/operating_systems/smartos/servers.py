@@ -16,7 +16,7 @@ class JoyentMixin(object):
         run('svcadm restart ssh')
 
 class AppMixin(JoyentMixin):
-    packages = ['gcc47', 'py27-psycopg2', 'py27-setuptools',
+    packages = ['gcc49', 'py27-psycopg2', 'py27-setuptools',
                 'py27-Pillow', 'py27-expat']
 
     def _set_profile(self):

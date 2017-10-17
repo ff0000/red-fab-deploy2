@@ -34,7 +34,7 @@ class Collectd(base_collectd.Collectd):
 
     def _add_package(self, name):
         if name == self.package_name:
-            functions.execute_on_host('utils.install_package', package_name='gcc47')
+            functions.execute_on_host('utils.install_package', package_name='gcc49')
         functions.execute_on_host('utils.install_package', package_name=name)
 
     @task_method

@@ -30,7 +30,7 @@ class HiRedisSetup(ContextTask):
                 run('gcc -std=c99 -pedantic -c -O3 -fPIC  -Wall -W -Wstrict-prototypes -Wwrite-strings -std=c99 async.c')
                 run('gcc -shared -Wl,-soname -Wl,libhiredis.so.0.10 -o libhiredis.so net.o hiredis.o sds.o async.o')
 
-            for d in ['/opt/local/gcc47', '/opt/local']:
+            for d in ['/opt/local/gcc49', '/opt/local']:
                 if exists(d):
                     sudo('mkdir -p {0}/include/hiredis'.format(d))
                     sudo('cp hiredis-0.11.0/hiredis.h {0}/include/hiredis/'.format(d))
