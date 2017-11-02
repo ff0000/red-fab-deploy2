@@ -25,7 +25,7 @@ class Postgresql(base_postgres.Postgresql):
 
     name = 'master_setup'
     binary_path = '/var/lib/postgresql/bin/'
-    version = '9.1'
+    version = '9.5'
 
     def _get_data_dir(self):
         return os.path.join('/var/lib/postgresql', '%s' % self.db_version, 'main')
