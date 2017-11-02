@@ -25,10 +25,9 @@ class Postgresql(base_postgres.Postgresql):
     create a user for database with password.
     """
 
-    binary_path = '/usr/pgsql-9.1/bin/'
+    binary_path = '/usr/pgsql-9.5/bin/'
     data_dir_default_base = '/var/lib/pgsql'
-    version = '9.1'
-    package_path = 'http://yum.postgresql.org/9.1/redhat/rhel-6-x86_64/pgdg-redhat91-9.1-5.noarch.rpm'
+    version = '9.5'
 
     def _get_data_dir(self):
         return os.path.join(
@@ -37,8 +36,7 @@ class Postgresql(base_postgres.Postgresql):
     def _install_package(self):
         pk_version = self.db_version.replace('.', '')
         functions.execute_on_host('utils.install_package',
-                                    package_name="postgresql{0}-server".format(pk_version),
-                                    remote=self.package_path)
+                                    package_name="postgresql{0}-server".format(pk_version),)
         functions.execute_on_host('utils.install_package',
                                     package_name="postgresql{0}-contrib".format(pk_version))
 

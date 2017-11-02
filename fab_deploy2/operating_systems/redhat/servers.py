@@ -14,7 +14,7 @@ class RHMixin(object):
 
 
 class AppMixin(RHMixin):
-    packages = ['python-psycopg2', 'python-setuptools', 'python-pillow',
+    packages = ['python-psycopg2', 'python-setuptools',
                 'python-pip']
 
 
