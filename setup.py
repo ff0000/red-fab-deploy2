@@ -50,7 +50,7 @@ setup(
     description = """ Code deployment tool """,
 
     long_description = """ Code deployment tool """,
-    install_requires = ["fabric",
+    install_requires = ["fabric==1.14.0",
                         "jinja2",
                         "smartdc",
                         "boto"],

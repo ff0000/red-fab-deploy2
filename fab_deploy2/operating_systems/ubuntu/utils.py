@@ -35,7 +35,7 @@ def start_or_restart_service(name, hosts=[]):
     """
     """
     with settings(warn_only=True):
-        result = sudo('service {0} status'.format(name))
+        result = sudo('service {0} status | cat'.format(name))
         if result.return_code == 0:
             sudo('service {0} restart'.format(name))
         else:
