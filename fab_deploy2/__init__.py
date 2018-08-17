@@ -40,6 +40,8 @@ def setup_env(project_path):
     # Setup fabric env
     env.deploy_path = os.path.join(project_path, 'deploy')
     env.project_path = project_path
+    env.sub_project_path = 'services/sbkend/'
+    env.git_path = os.path.join(project_path, '../../')
     env.project_name = os.path.basename(env.project_path)
     env.build_dir = os.path.join(project_path, '.build')
 

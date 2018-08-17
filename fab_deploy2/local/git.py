@@ -18,6 +18,8 @@ class GitBuild(Task):
         local('mkdir -p {0}'.format(env.build_dir))
         local('touch {0}/tmp'.format(env.build_dir))
         local('rm -r {0}/*'.format(env.build_dir))
-        local('git --git-dir="{0}/.git" "--work-tree={1}" checkout -f {2}'.format(env.project_path, env.build_dir, branch))
+        local('git --git-dir="{0}.git" "--work-tree={1}" checkout -f {2} -- {3}'.format(env.git_path, env.build_dir, branch, env.sub_project_path))
+        local('mv {0}/{1}* {0}'.format(env.build_dir, env.sub_project_path))
 
 build = GitBuild()
+
